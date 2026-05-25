@@ -4,17 +4,11 @@ import SwiftUI
 struct PylonRackApp: App {
     @StateObject private var rack = RackController()
 
-    init() {
-        let settings = AppSettings.shared
-        if let app = NSApp {
-            app.setActivationPolicy(settings.showInDock ? .regular : .accessory)
-        }
-    }
-
     var body: some Scene {
         MenuBarExtra {
             MenuBarMenuView()
                 .environmentObject(rack)
+                .onAppear { AppSettings.shared.applyDockPolicy() }
         } label: {
             Image("rack-menubar")
                 .resizable()

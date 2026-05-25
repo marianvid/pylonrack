@@ -82,6 +82,11 @@ class AppSettings: ObservableObject {
 
     // MARK: - Side effects
 
+    func applyDockPolicy() {
+        guard let app = NSApp else { return }
+        app.setActivationPolicy(showInDock ? .regular : .accessory)
+    }
+
     private func applyStartAtLogin() {
         let service = SMAppService.mainApp
         do {
@@ -98,8 +103,7 @@ class AppSettings: ObservableObject {
     }
 
     private func applyShowInDock() {
-        guard let app = NSApp else { save(); return }
-        app.setActivationPolicy(showInDock ? .regular : .accessory)
+        applyDockPolicy()
         save()
     }
 }
