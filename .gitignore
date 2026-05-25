@@ -27,7 +27,7 @@ Icon
 .build/
 .swiftpm/
 
-# Conda / Python (icon build tools)
-__pycache__/
+# Built app
+*.app/
 *.pyc
 pylonrack_icon_build/
