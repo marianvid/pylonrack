@@ -1,4 +1,5 @@
 import Foundation
+import AppKit
 import ServiceManagement
 
 class AppSettings: ObservableObject {
@@ -97,7 +98,8 @@ class AppSettings: ObservableObject {
     }
 
     private func applyShowInDock() {
-        NSApp.setActivationPolicy(showInDock ? .regular : .accessory)
+        guard let app = NSApp else { save(); return }
+        app.setActivationPolicy(showInDock ? .regular : .accessory)
         save()
     }
 }
