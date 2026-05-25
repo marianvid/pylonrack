@@ -7,7 +7,7 @@
 	<key>CFBundleDisplayName</key>
 	<string>PylonRack</string>
 	<key>CFBundleIdentifier</key>
-	<string>com.parallaxvox.rack</string>
+	<string>com.marianvid.pylonrack</string>
 	<key>CFBundleVersion</key>
 	<string>1</string>
 	<key>CFBundleShortVersionString</key>
