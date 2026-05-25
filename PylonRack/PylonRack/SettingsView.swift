@@ -90,6 +90,13 @@ struct GeneralSettingsTab: View {
             }
 
             Section {
+                Toggle("Start at login", isOn: $settings.startAtLogin)
+                Toggle("Show in Dock", isOn: $settings.showInDock)
+            } header: {
+                Text("Behavior")
+            }
+
+            Section {
                 NumericStepperField(
                     label: "Heartbeat interval",
                     unit: "sec",
@@ -112,6 +119,8 @@ struct GeneralSettingsTab: View {
         .onChange(of: settings.heartbeatInterval)   { _, _ in settings.save() }
         .onChange(of: settings.reconnectAttempts)   { _, _ in settings.save() }
         .onChange(of: settings.defaultLocation)     { _, _ in settings.save() }
+        .onChange(of: settings.startAtLogin)        { _, _ in settings.save() }
+        .onChange(of: settings.showInDock)          { _, _ in settings.save() }
     }
 
     private func chooseFolder() {

@@ -4,6 +4,12 @@ import SwiftUI
 struct PylonRackApp: App {
     @StateObject private var rack = RackController()
 
+    init() {
+        // Apply persisted dock/activation policy before any window appears
+        let settings = AppSettings.shared
+        NSApp.setActivationPolicy(settings.showInDock ? .regular : .accessory)
+    }
+
     var body: some Scene {
         MenuBarExtra {
             MenuBarMenuView()

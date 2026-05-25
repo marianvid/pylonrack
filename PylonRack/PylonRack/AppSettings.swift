@@ -1,4 +1,5 @@
 import Foundation
+import ServiceManagement
 
 class AppSettings: ObservableObject {
     static let shared = AppSettings()
@@ -9,12 +10,20 @@ class AppSettings: ObservableObject {
     @Published var heartbeatInterval: Int = 10
     @Published var reconnectAttempts: Int = 3
     @Published var logLinesPerRequest: Int = 50
+    @Published var startAtLogin: Bool = false {
+        didSet { applyStartAtLogin() }
+    }
+    @Published var showInDock: Bool = false {
+        didSet { applyShowInDock() }
+    }
 
     private struct SettingsData: Codable {
         var defaultLocation: String
         var heartbeatInterval: Int
         var reconnectAttempts: Int
         var logLinesPerRequest: Int
+        var startAtLogin: Bool
+        var showInDock: Bool
     }
 
     // Production init
@@ -42,6 +51,8 @@ class AppSettings: ObservableObject {
         heartbeatInterval  = decoded.heartbeatInterval
         reconnectAttempts  = decoded.reconnectAttempts
         logLinesPerRequest = decoded.logLinesPerRequest
+        startAtLogin       = decoded.startAtLogin
+        showInDock         = decoded.showInDock
     }
 
     func save() {
@@ -49,7 +60,9 @@ class AppSettings: ObservableObject {
             defaultLocation:    defaultLocation,
             heartbeatInterval:  heartbeatInterval,
             reconnectAttempts:  reconnectAttempts,
-            logLinesPerRequest: logLinesPerRequest
+            logLinesPerRequest: logLinesPerRequest,
+            startAtLogin:       startAtLogin,
+            showInDock:         showInDock
         )
         if let encoded = try? JSONEncoder().encode(data) {
             try? encoded.write(to: settingsURL)
@@ -61,7 +74,30 @@ class AppSettings: ObservableObject {
         heartbeatInterval  = 10
         reconnectAttempts  = 10
         logLinesPerRequest = 50
-        // Don't save defaults when URL might be invalid (test scenarios)
+        startAtLogin       = false
+        showInDock         = false
         if settingsURL.path.contains("Application Support") { save() }
+    }
+
+    // MARK: - Side effects
+
+    private func applyStartAtLogin() {
+        let service = SMAppService.mainApp
+        do {
+            if startAtLogin {
+                if service.status != .enabled { try service.register() }
+            } else {
+                if service.status == .enabled { try service.unregister() }
+            }
+        } catch {
+            // Registration can fail if the user hasn't granted permission yet —
+            // not fatal, setting is still persisted.
+        }
+        save()
+    }
+
+    private func applyShowInDock() {
+        NSApp.setActivationPolicy(showInDock ? .regular : .accessory)
+        save()
     }
 }
