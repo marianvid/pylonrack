@@ -1,5 +1,61 @@
 # PylonRack
 
+A macOS menu bar application that acts as a universal launcher and monitor for independent services and applications — each slot holds one application, and the rack provides a unified interface to manage, monitor, and interact with all of them.
+
+---
+
+## Installation
+
+PylonRack is distributed as source code. There is no App Store release and no signed certificate — build it yourself with Xcode.
+
+### Requirements
+
+- macOS 14 (Sonoma) or later
+- Xcode 15 or later
+
+### Build and Install
+
+```
+git clone https://github.com/marianvid/pylonrack
+cd pylonrack/PylonRack
+open PylonRack.xcodeproj
+```
+
+In Xcode:
+1. Select the **PylonRack** scheme and **My Mac** as destination
+2. **Product → Build** (`⌘B`)
+3. **Product → Archive** for a release build, or just run directly with `⌘R`
+
+To install to `/Applications` from the command line after building:
+
+```
+xcodebuild build \
+  -scheme PylonRack \
+  -destination 'platform=macOS' \
+  -derivedDataPath /tmp/pylonrack-build \
+  -configuration Release
+
+cp -R /tmp/pylonrack-build/Build/Products/Release/PylonRack.app /Applications/
+```
+
+### First Launch — Gatekeeper
+
+Because the app is not notarized, macOS will block the first launch:
+
+1. Open `/Applications` in Finder
+2. Right-click `PylonRack.app` → **Open**
+3. Click **Open** in the dialog
+
+After the first launch, double-clicking works normally.
+
+Alternatively, from the terminal:
+
+```
+xattr -dr com.apple.quarantine /Applications/PylonRack.app
+```
+
+---
+
 ## What is PylonRack?
 
 PylonRack is a macOS menu bar application that acts as a universal launcher and monitor for independent services and applications. Think of it as a physical server rack — each slot holds one application, each application runs independently, and the rack provides a unified interface to manage, monitor, and interact with all of them from a single place.
@@ -16,7 +72,7 @@ A slot is a placeholder in the rack for one application. Each slot has:
 - A **status** (connecting, connected, warning, error, inactive)
 - An **activate/deactivate toggle**
 - A **log viewer**
-- An **action panel** with buttons defined by the application itself
+- A **controls header** with native controls defined by the application itself
 
 Slots are persistent — they survive rack restarts. Their active/inactive state is also persistent: if a slot was active when you quit the rack, it will be automatically reactivated on the next launch.
 
@@ -49,8 +105,9 @@ The main window is split into two panels:
   - Row 2: status dot (color-coded) + status message + log toggle + activate/deactivate button
 
 **Right panel — Slot detail**
-- Top bar: slot name + current status
-- Main area: either the application's HTML UI (in a WebView) or the log viewer (toggled per slot)
+- **Top bar:** slot name + current status + log toggle button
+- **Controls header:** native macOS controls (buttons, dropdowns, labels) defined by the application manifest — visible only when the application provides controls
+- **Body:** either the application's HTML UI (in a WebView) or the log viewer, toggled via the log button in the top bar
 - When no slot is selected: empty state with instructions
 
 **Status bar** (bottom of window, full width)
@@ -74,11 +131,13 @@ Accessible via the menu bar icon → Settings…
 
 **General**
 - **Default Location** — folder opened by default when browsing for a local application
+- **Start at login** — launch PylonRack automatically when you log in
+- **Show in Dock** — show PylonRack in the Dock in addition to the menu bar
 - **Heartbeat Interval** — how often the rack sends a ping to each connected slot (1–60 seconds, default 10s)
-- **Reconnect Attempts** — how many times the rack retries before marking a slot as error (1–10, default 3)
+- **Reconnect Attempts** — how many times the rack retries before marking a slot as error (1–10, default 10)
 
 **Logs**
-- **Lines per Request** — how many log lines are fetched per scroll chunk (10–500, default 50)
+- **Lines per Request** — how many log lines are fetched per request (10–500, default 50)
 
 Settings are stored in `~/Library/Application Support/PylonRack/settings.json`.
 
@@ -124,6 +183,7 @@ The slot is added in **inactive** state. Press ▶ to activate it.
 `slots.json` stores only static configuration (name, host, port, local path, active flag). Runtime state (status, manifest, log) is always fetched live.
 
 ---
+
 ---
 
 # PylonRack Slot Application Specification
@@ -156,7 +216,7 @@ const port = parseInt(process.env.PARALLAX_PORT) || 9001
 
 ## Local Application Structure
 
-A local application must have a `rack.json` file in its root folder. This file is read by the rack when you browse for the application.
+A local application must have a `rack.json` file in its root folder.
 
 ### `rack.json`
 
@@ -166,7 +226,13 @@ A local application must have a `rack.json` file in its root folder. This file i
   "version": "1.0",
   "start": "conda run -n my-env python3 app.py",
   "stop": "python3 stop.py",
-  "port": 9001
+  "port": 9001,
+  "heartbeat_interval": 5,
+  "controls": [
+    { "id": "model_select", "type": "dropdown", "label": "Model" },
+    { "id": "toggle",       "type": "button",   "label": "Start", "style": "primary" },
+    { "id": "status_label", "type": "label",    "value": "Idle",  "style": "default" }
+  ]
 }
 ```
 
@@ -176,94 +242,61 @@ A local application must have a `rack.json` file in its root folder. This file i
 | `version` | ❌ | Application version (informational) |
 | `start` | ✅ | Shell command to launch the application (run via `/bin/zsh -c`) |
 | `stop` | ❌ | Optional graceful stop script, called before SIGTERM |
-| `port` | ✅ | Preferred WebSocket port (1–65535). Rack may assign a different port if this one is occupied — always read `PARALLAX_PORT` |
-| `startup_delay` | ❌ | Seconds to wait after launch before attempting the first WebSocket connection (default: 0). Use this for runtimes that take time to initialize, e.g. conda environments (`3`), JVM (`5`) |
+| `port` | ✅ | Preferred WebSocket port (1–65535) |
+| `heartbeat_interval` | ❌ | Heartbeat interval in seconds (overrides rack setting for this slot) |
+| `controls` | ❌ | Native controls rendered in the rack header (see Controls section) |
+| `startup_delay` | ❌ | Seconds to wait after launch before connecting (default: 0) |
 
-**Important:** The rack sets the `PARALLAX_PORT` environment variable before launching the process. Your application **must** read this variable to know which port to bind on.
+**Important:** The rack sets the `PARALLAX_PORT` environment variable before launching the process. Always read this variable.
 
 ---
-
 
 ## The Protocol
 
-### Message Direction
-- **Rack → App:** requests and commands
-- **App → Rack:** responses
-
-All messages are JSON objects with a `type` field. Unknown message types must be silently ignored — future versions of the rack may introduce new message types.
-
----
-
 ### Connection Flow
-
-This is the exact sequence of events from the moment the rack connects to your application. Implementing this correctly is critical.
 
 ```
 Rack                              App
  |                                 |
- |--- WebSocket connect ---------->|  (rack connects to ws://localhost:PORT)
- |                                 |
- |--- { "type": "manifest" } ----->|  (FIRST message sent by rack, immediately after connect)
- |                                 |
- |<-- { "type": "manifest", ... } -|  (app responds with its manifest)
+ |--- WebSocket connect ---------->|
+ |--- { "type": "manifest" } ----->|  (first message after connect)
+ |<-- { "type": "manifest", ... } -|
  |                                 |
  |        [ heartbeat loop ]       |
- |--- { "type": "ping" } --------->|  (rack starts heartbeat after manifest received)
- |<-- { "type": "pong", ... } -----|
  |--- { "type": "ping" } --------->|
  |<-- { "type": "pong", ... } -----|
  |                                 |
+ |        [ control data ]         |
+ |--- { "type": "control_data" } ->|  (rack requests dropdown items)
+ |<-- { "type": "control_data" } --|
+ |                                 |
  |        [ user interaction ]     |
- |--- { "type": "action", ... } -->|  (user pressed a button)
+ |--- { "type": "action", ... } -->|  (user interacted with a control)
  |<-- { "type": "action_result" } -|
  |                                 |
- |--- { "type": "log_request" } -->|  (user opened log panel)
+ |   [ app pushes control update ] |
+ |<-- { "type": "controls_update"} |  (app updates control state)
+ |                                 |
+ |--- { "type": "log_request" } -->|
  |<-- { "type": "log_response" } --|
  |                                 |
- |        [ deactivation ]         |
- |--- { "type": "shutdown" } ----->|  (user pressed deactivate)
- |                                 |  (app cleans up and exits)
- |--- WebSocket close ------------>|  (rack closes connection)
+ |--- { "type": "shutdown" } ----->|
 ```
-
-**Key rules:**
-1. The rack sends `manifest` as its **first message** immediately after the WebSocket connection is established. Your application must be ready to respond before any ping arrives.
-2. The heartbeat loop starts **after** the manifest is received successfully. If the manifest response is invalid JSON or missing required fields, the rack will not start heartbeats and the slot will remain in connecting state.
-3. The rack may disconnect and reconnect at any time (e.g. after a network error). Your application must handle multiple sequential connections gracefully — each new connection starts the flow from the beginning (manifest request first).
-4. There is only ever **one active connection** from the rack at a time per slot.
 
 ---
 
-### Port Binding — Critical
+### Port Binding
 
-For local applications, the rack sets `PARALLAX_PORT` in the environment **before** launching your process. The `port` field in `rack.json` is only a **preference** — the rack may assign a different port if that one is occupied.
-
-Your application **must always** read `PARALLAX_PORT` to know which port to bind on:
+Always read `PARALLAX_PORT`:
 
 ```python
-# Python
 import os
-port = int(os.environ.get("PARALLAX_PORT", 9001))  # 9001 is fallback for manual testing only
+port = int(os.environ.get("PARALLAX_PORT", 9001))
 ```
-
-```javascript
-// Node.js
-const port = parseInt(process.env.PARALLAX_PORT) || 9001
-```
-
-```go
-// Go
-port := os.Getenv("PARALLAX_PORT")
-if port == "" { port = "9001" }
-```
-
-If your application ignores `PARALLAX_PORT` and binds to a hardcoded port, it may conflict with other slots or system services, and the rack will fail to connect.
 
 ---
 
 ### Heartbeat
-
-The rack sends a ping at the configured interval (default 10 seconds, configurable per-slot via `heartbeat_interval` in the manifest). The application must respond promptly.
 
 **Rack → App**
 ```json
@@ -272,96 +305,140 @@ The rack sends a ping at the configured interval (default 10 seconds, configurab
 
 **App → Rack**
 ```json
-{
-  "type": "pong",
-  "status": "running",
-  "message": "All systems nominal"
-}
+{ "type": "pong", "status": "running", "message": "All systems nominal" }
 ```
 
-| Field | Required | Values | Description |
-|-------|----------|--------|-------------|
-| `status` | ✅ | `"running"` \| `"warning"` \| `"error"` | Maps to slot color: green / yellow / red |
-| `message` | ✅ | Any short string | Shown in the rack status bar. Keep it concise |
-
-If the rack does not receive a pong within the heartbeat interval, it marks the slot as **warning**. After the configured number of missed beats, it attempts to reconnect.
+| `status` value | Slot color |
+|----------------|------------|
+| `"running"` | 🟢 Green |
+| `"warning"` | 🟡 Yellow |
+| `"error"` | 🔴 Red |
 
 ---
 
 ### Manifest
 
-The rack sends this as its **first message** after connecting. Respond with the full manifest before any other interaction is possible.
+**Rack → App:** `{ "type": "manifest" }`
 
-**Rack → App**
-```json
-{ "type": "manifest" }
-```
-
-**App → Rack**
+**App → Rack:**
 ```json
 {
   "type": "manifest",
   "name": "My Application",
   "version": "1.0",
   "heartbeat_interval": 10,
-  "buttons": [
-    { "id": "start",  "label": "Start",  "style": "primary"     },
-    { "id": "stop",   "label": "Stop",   "style": "destructive" },
-    { "id": "reload", "label": "Reload", "style": "secondary"   }
+  "controls": [
+    { "id": "model_select", "type": "dropdown", "label": "Model" },
+    { "id": "toggle",       "type": "button",   "label": "Start", "style": "primary" },
+    { "id": "status_label", "type": "label",    "value": "Idle",  "style": "default" }
   ],
-  "ui_url": "http://localhost:8080/index.html"
+  "ui_url": "http://localhost:9101/index.html"
 }
 ```
 
-| Field | Required | Description |
-|-------|----------|-------------|
-| `name` | ✅ | Application name |
-| `version` | ❌ | Version string (informational) |
-| `heartbeat_interval` | ❌ | Overrides the rack setting for this slot (seconds). Useful if your app has a known response latency |
-| `buttons` | ✅ | List of action buttons. Use `[]` if no buttons are needed |
-| `ui_url` | ❌ | Full URL of the HTML interface. Omit entirely if your app has no UI |
+---
 
-**Button styles**
+### Controls
 
-| Style | Appearance | Use for |
-|-------|-----------|---------|
-| `primary` | Prominent, accent color | Main action (Start, Run) |
-| `secondary` | Subdued | Secondary actions (Reload, Reset) |
-| `destructive` | Red | Dangerous actions (Stop, Delete) |
-| `warning` | Orange | Caution actions (Force restart) |
+Controls are native macOS UI elements rendered in the rack header. The rack requests data for dropdowns automatically after the manifest is received.
 
-**About `ui_url`:**
-If provided, the rack loads this URL in a WebView in the right panel. Your application is responsible for serving the HTML content — typically via a lightweight HTTP server running on a separate port (not the WebSocket port). The URL must be reachable from localhost. If omitted, the rack shows a placeholder in the right panel.
+#### Control types
 
-```python
-# Example: serve index.html on HTTP alongside the WebSocket server
-from http.server import HTTPServer, SimpleHTTPRequestHandler
-import threading
-
-HTTP_PORT = int(os.environ.get("PARALLAX_PORT", 9001)) + 100  # e.g. WS=9001, HTTP=9101
-
-def run_http():
-    HTTPServer(("localhost", HTTP_PORT), SimpleHTTPRequestHandler).serve_forever()
-
-threading.Thread(target=run_http, daemon=True).start()
-```
-
-Then in your manifest:
+**`button`**
 ```json
-"ui_url": "http://localhost:9101/index.html"
+{ "id": "toggle", "type": "button", "label": "Start", "style": "primary", "badge": false }
 ```
+
+| Style | Appearance |
+|-------|-----------|
+| `primary` | Accent color |
+| `secondary` | Subdued |
+| `destructive` | Red |
+| `warning` | Orange |
+| `success` | Green |
+
+Set `badge: true` to show an orange dot indicator (e.g. update available).
+
+**`dropdown`**
+```json
+{ "id": "model_select", "type": "dropdown", "label": "Model" }
+```
+
+Items are populated via `control_data` exchange (see below).
+
+**`label`**
+```json
+{ "id": "status_label", "type": "label", "value": "Idle", "style": "default" }
+```
+
+| Style | Color |
+|-------|-------|
+| `default` | Secondary text |
+| `success` | Green |
+| `warning` | Orange |
+| `error` | Red |
+| `primary` | Accent |
+
+---
+
+### Control Data (dropdown population)
+
+After receiving the manifest, the rack sends a `control_data` request for each dropdown control. The app responds with the available items.
+
+**Rack → App**
+```json
+{ "type": "control_data", "control_id": "model_select" }
+```
+
+**App → Rack**
+```json
+{
+  "type": "control_data",
+  "control_id": "model_select",
+  "items": ["Model A", "Model B", "Model C"]
+}
+```
+
+---
+
+### Controls Update (push from app)
+
+The app can push control state changes to the rack at any time — e.g. after starting a process, update the button label and status label.
+
+**App → Rack**
+```json
+{
+  "type": "controls_update",
+  "controls": [
+    { "id": "toggle",       "label": "Stop",    "style": "destructive" },
+    { "id": "status_label", "value": "Running", "style": "success" },
+    { "id": "update",       "badge": true }
+  ]
+}
+```
+
+Each entry in `controls` can update any subset of fields: `label`, `value`, `style`, `badge`, `items`.
 
 ---
 
 ### Actions
 
-When the user clicks a button in the rack, the rack sends an action message. You must respond with `action_result` for every action received.
+When the user interacts with a control, the rack sends an action message.
 
 **Rack → App**
 ```json
 {
   "type": "action",
-  "button_id": "start"
+  "control_id": "toggle"
+}
+```
+
+For dropdowns, the selected value is included:
+```json
+{
+  "type": "action",
+  "control_id": "model_select",
+  "value": "Model B"
 }
 ```
 
@@ -369,267 +446,131 @@ When the user clicks a button in the rack, the rack sends an action message. You
 ```json
 {
   "type": "action_result",
-  "button_id": "start",
+  "control_id": "toggle",
   "success": true,
-  "message": "Service started successfully"
+  "message": "Started"
 }
 ```
-
-| Field | Required | Description |
-|-------|----------|-------------|
-| `button_id` | ✅ | Matches the `id` from the manifest button |
-| `success` | ✅ | `true` or `false` |
-| `message` | ✅ | Result message shown in the rack |
 
 ---
 
 ### Log Streaming
 
-The rack requests log lines on demand — when the user opens the log panel or scrolls up. The application must serve lines from its log file or internal buffer.
-
 **Rack → App**
 ```json
-{
-  "type": "log_request",
-  "lines": 50,
-  "offset": 0
-}
+{ "type": "log_request", "lines": 50, "offset": 0 }
 ```
-
-| Field | Description |
-|-------|-------------|
-| `lines` | How many lines to return |
-| `offset` | How many lines to skip from the end. `0` = last N lines. `50` = the 50 lines before the last 50. Used for scrolling backwards through history |
 
 **App → Rack**
 ```json
 {
   "type": "log_response",
-  "lines": [
-    "2026-05-25 10:00:01 [INFO] Service started",
-    "2026-05-25 10:00:02 [INFO] Listening on port 9001"
-  ],
+  "lines": ["2026-05-26 10:00:01 [INFO] Started", "..."],
   "total": 1240
 }
 ```
-
-| Field | Description |
-|-------|-------------|
-| `lines` | The requested lines in chronological order (oldest first) |
-| `total` | Total number of log lines currently available |
-
-**Log format recommendations:**
-- Use rolling file logs to avoid unbounded disk usage
-- Include timestamp and level in every line
-- Recommended format: `YYYY-MM-DD HH:MM:SS [LEVEL] message`
-- The rack applies automatic color coding: `[ERROR]` → red, `[WARNING]` → orange, `[DEBUG]` → gray, `[INFO]` → default
 
 ---
 
 ### Shutdown
 
-When the user deactivates a local slot, the rack sends a shutdown message and waits up to 3 seconds before escalating.
+**Rack → App:** `{ "type": "shutdown" }`
 
-**Rack → App**
-```json
-{ "type": "shutdown" }
-```
-
-**Shutdown sequence (rack side):**
-1. Rack sends `{ "type": "shutdown" }`
-2. Waits up to 3 seconds
-3. If a `stop` script is defined in `rack.json`, runs it
-4. Sends SIGTERM to the process
-5. Polls for up to 3 seconds
-6. Sends SIGKILL if the process is still running
-
-**Your application must:**
-1. Receive the shutdown message
-2. Finish any critical in-progress work
-3. Flush all log buffers to disk
-4. Close open connections and file handles
-5. Call `sys.exit(0)` (or equivalent) to terminate the process
-
-```python
-elif t == "shutdown":
-    logger.info("Shutdown requested by rack")
-    # flush, cleanup...
-    import sys
-    sys.exit(0)
-```
-
-> **Important:** Simply breaking out of the message loop is not enough. The process must actually exit, otherwise the rack will proceed to SIGTERM after the timeout.
+The app must actually exit (`sys.exit(0)`), not just break the loop. Rack escalates to SIGTERM after 3 seconds, then SIGKILL.
 
 ---
 
-### Reconnection Handling
-
-The rack may disconnect and reconnect at any time — on network errors, after a rack restart, or after a manual reconnect. Your application must handle this correctly:
-
-- Keep the WebSocket server running at all times (do not shut it down on disconnect)
-- Reset any per-connection state when a new connection arrives
-- Be ready to respond to `manifest` immediately on each new connection
-- Do not assume that a new connection is a continuation of the previous one
+## Minimal Python Implementation
 
 ```python
-async def handle(ws):
-    # This function is called fresh for every new connection
-    # Reset per-connection state here if needed
-    logger.info("Rack connected")
-    try:
-        async for raw in ws:
-            ...
-    except websockets.exceptions.ConnectionClosed:
-        logger.info("Rack disconnected — server keeps running, waiting for reconnect")
-```
-
----
-
-## Minimal Implementation Example (Python)
-
-```python
-import asyncio, json, logging, os, sys
-from http.server import HTTPServer, SimpleHTTPRequestHandler
+import asyncio, json, os, sys
 from logging.handlers import RotatingFileHandler
-from threading import Thread
-import websockets
+import logging, websockets
 
-# Always read PARALLAX_PORT — never hardcode
-WS_PORT   = int(os.environ.get("PARALLAX_PORT", 9001))
-HTTP_PORT = WS_PORT + 100   # serve HTML on a separate port
-APP_DIR   = os.path.dirname(os.path.abspath(__file__))
-LOG_FILE  = os.path.join(APP_DIR, "app.log")
+WS_PORT  = int(os.environ.get("PARALLAX_PORT", 9001))
+LOG_FILE = os.path.join(os.path.dirname(__file__), "app.log")
 
-# Logging setup
 logger = logging.getLogger("myapp")
 logger.setLevel(logging.DEBUG)
 fh = RotatingFileHandler(LOG_FILE, maxBytes=5*1024*1024, backupCount=3)
 fh.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
 logger.addHandler(fh)
-logger.addHandler(logging.StreamHandler())
 
-def read_log(count, offset):
+def read_log(n, offset):
     try:
-        with open(LOG_FILE) as f:
-            lines = f.readlines()
+        lines = open(LOG_FILE).readlines()
         total = len(lines)
         end   = max(0, total - offset)
-        start = max(0, end - count)
-        return [l.rstrip() for l in lines[start:end]], total
+        return [l.rstrip() for l in lines[max(0, end-n):end]], total
     except Exception:
         return [], 0
 
-def run_http():
-    class Handler(SimpleHTTPRequestHandler):
-        def __init__(self, *a, **kw):
-            super().__init__(*a, directory=APP_DIR, **kw)
-        def log_message(self, *a): pass
-    HTTPServer(("localhost", HTTP_PORT), Handler).serve_forever()
-
 async def handle(ws):
-    # Called fresh for every new connection from the rack
-    logger.info("Rack connected")
-    try:
-        async for raw in ws:
-            msg = json.loads(raw)
-            t   = msg.get("type")
+    async for raw in ws:
+        msg = json.loads(raw)
+        t   = msg.get("type")
 
-            if t == "manifest":
-                # Respond to manifest FIRST — rack sends this immediately on connect
-                await ws.send(json.dumps({
-                    "type": "manifest",
-                    "name": "My App",
-                    "version": "1.0",
-                    "heartbeat_interval": 10,
-                    "buttons": [
-                        {"id": "start", "label": "Start", "style": "primary"},
-                        {"id": "stop",  "label": "Stop",  "style": "destructive"}
-                    ],
-                    "ui_url": f"http://localhost:{HTTP_PORT}/index.html"
-                }))
+        if t == "manifest":
+            await ws.send(json.dumps({
+                "type": "manifest", "name": "My App", "version": "1.0",
+                "heartbeat_interval": 10,
+                "controls": [
+                    {"id": "run",    "type": "button", "label": "Run",  "style": "primary"},
+                    {"id": "status", "type": "label",  "value": "Idle", "style": "default"},
+                ]
+            }))
 
-            elif t == "ping":
-                await ws.send(json.dumps({
-                    "type": "pong",
-                    "status": "running",
-                    "message": "All good"
-                }))
+        elif t == "ping":
+            await ws.send(json.dumps({"type": "pong", "status": "running", "message": "OK"}))
 
-            elif t == "action":
-                btn = msg.get("button_id")
-                logger.info(f"Action: {btn}")
-                # Handle your buttons here
-                await ws.send(json.dumps({
-                    "type": "action_result",
-                    "button_id": btn,
-                    "success": True,
-                    "message": f"Executed: {btn}"
-                }))
+        elif t == "action":
+            cid = msg.get("control_id")
+            await ws.send(json.dumps({"type": "action_result", "control_id": cid, "success": True, "message": "Done"}))
 
-            elif t == "log_request":
-                lines, total = read_log(msg.get("lines", 50), msg.get("offset", 0))
-                await ws.send(json.dumps({
-                    "type": "log_response",
-                    "lines": lines,
-                    "total": total
-                }))
+        elif t == "log_request":
+            lines, total = read_log(msg.get("lines", 50), msg.get("offset", 0))
+            await ws.send(json.dumps({"type": "log_response", "lines": lines, "total": total}))
 
-            elif t == "shutdown":
-                logger.info("Shutdown requested — exiting")
-                sys.exit(0)  # Must actually exit, not just break
-
-    except websockets.exceptions.ConnectionClosed:
-        logger.info("Rack disconnected — waiting for reconnect")
-        # Do NOT exit here — keep server running
+        elif t == "shutdown":
+            sys.exit(0)
 
 async def main():
-    Thread(target=run_http, daemon=True).start()
-    logger.info(f"Started — WS port {WS_PORT}, HTTP port {HTTP_PORT}")
     async with websockets.serve(handle, "localhost", WS_PORT):
-        await asyncio.Future()  # Run forever
+        await asyncio.Future()
 
 asyncio.run(main())
 ```
 
 ---
 
-## Message Reference Summary
+## Message Reference
 
-| Direction | Type | Required Response | When |
-|-----------|------|------------------|------|
-| Rack → App | `manifest` | `manifest` | **First message after connect** |
-| Rack → App | `ping` | `pong` | Every N seconds (after manifest received) |
-| Rack → App | `action` | `action_result` | User pressed a button |
-| Rack → App | `log_request` | `log_response` | User opened log panel or scrolled |
-| Rack → App | `shutdown` | *(exit process)* | User pressed deactivate |
+| Direction | Type | When |
+|-----------|------|------|
+| Rack → App | `manifest` | First message after connect |
+| Rack → App | `ping` | Every N seconds |
+| Rack → App | `control_data` | After manifest, for each dropdown |
+| Rack → App | `action` | User interacted with a control |
+| Rack → App | `log_request` | User opened log panel |
+| Rack → App | `shutdown` | User deactivated slot |
+| App → Rack | `manifest` | Response to manifest request |
+| App → Rack | `pong` | Response to ping |
+| App → Rack | `control_data` | Response to control_data request |
+| App → Rack | `action_result` | Response to action |
+| App → Rack | `log_response` | Response to log_request |
+| App → Rack | `controls_update` | Any time app wants to update control state |
 
 ---
 
-## Checklist for a New Slot Application
+## Checklist
 
-**Setup**
-- [ ] Create `rack.json` in the application root folder
-- [ ] Set `start` command in `rack.json` (use conda/venv activation if needed)
-- [ ] Read port from `PARALLAX_PORT` environment variable — never hardcode
-
-**WebSocket Server**
-- [ ] Start WebSocket server on `PARALLAX_PORT` at application launch
-- [ ] Keep server running even when the rack disconnects
-- [ ] Handle multiple sequential connections (rack reconnects after errors)
-
-**Protocol**
-- [ ] Respond to `manifest` — first message from rack on every connection
-- [ ] Respond to `ping` with `pong` including `status` and `message`
-- [ ] Respond to each `action` with `action_result`
-- [ ] Respond to `log_request` with `log_response` (lines + total)
-- [ ] Handle `shutdown` by calling `sys.exit(0)` (not just breaking the loop)
-
-**HTML UI (optional)**
-- [ ] Serve HTML on a separate HTTP port (not the WebSocket port)
-- [ ] Set `ui_url` in manifest pointing to your HTTP server
-- [ ] Omit `ui_url` entirely if no UI is needed
-
-**Logging**
-- [ ] Use rotating file logs (max size + backup count)
-- [ ] Format: `YYYY-MM-DD HH:MM:SS [LEVEL] message`
-- [ ] Log to file (not only stdout — rack reads the file)
+- [ ] `rack.json` with `name`, `start`, `port`
+- [ ] Read port from `PARALLAX_PORT` environment variable
+- [ ] Respond to `manifest` (first message on every connection)
+- [ ] Respond to `ping` with `pong`
+- [ ] Respond to `action` with `action_result`
+- [ ] Respond to `log_request` with `log_response`
+- [ ] Respond to `control_data` for each dropdown
+- [ ] Push `controls_update` when app state changes
+- [ ] Handle `shutdown` by calling `sys.exit(0)`
+- [ ] Keep WebSocket server running when rack disconnects
