@@ -64,15 +64,17 @@ final class RackController: ObservableObject {
     }
 
     func removeSlot(_ slot: Slot) {
-        if selectedSlotId == slot.id { selectedSlotId = nil }
         Task {
             await deactivate(slot)
+            // Clear selection and remove only after shutdown completes
+            if selectedSlotId == slot.id { selectedSlotId = nil }
             connections.removeValue(forKey: slot.id)
             processes.removeValue(forKey: slot.id)
             configs.removeValue(forKey: slot.id)
             runtimePorts.removeValue(forKey: slot.id)
             slots.removeAll { $0.id == slot.id }
             saveSlots()
+            log("Removed \(slot.name)")
         }
     }
 
