@@ -16,6 +16,9 @@ final class SlotProcess {
         env["PYLON_PORT"] = String(port)
         proc.environment = env
 
+        // Start in new process group so we can kill all children
+        proc.qualityOfService = .userInitiated
+
         let pipe = Pipe()
         proc.standardOutput = pipe
         proc.standardError  = pipe
@@ -33,6 +36,10 @@ final class SlotProcess {
         }
 
         try proc.run()
+
+        // Move to new process group so killpg works
+        setpgid(proc.processIdentifier, proc.processIdentifier)
+
         self.process = proc
     }
 
@@ -46,6 +53,25 @@ final class SlotProcess {
     }
 
     var isRunning: Bool { process?.isRunning ?? false }
-    func sendSIGTERM() { process?.terminate() }
-    func sendSIGKILL()  { process.map { kill($0.processIdentifier, SIGKILL) } }
+
+    func sendSIGTERM() {
+        guard let proc = process else { return }
+        let pgid = getpgid(proc.processIdentifier)
+        if pgid > 0 {
+            // Kill entire process group — catches zsh + python3 children
+            killpg(pgid, SIGTERM)
+        } else {
+            proc.terminate()
+        }
+    }
+
+    func sendSIGKILL() {
+        guard let proc = process else { return }
+        let pgid = getpgid(proc.processIdentifier)
+        if pgid > 0 {
+            killpg(pgid, SIGKILL)
+        } else {
+            kill(proc.processIdentifier, SIGKILL)
+        }
+    }
 }
