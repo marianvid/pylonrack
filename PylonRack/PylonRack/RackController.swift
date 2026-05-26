@@ -87,6 +87,17 @@ final class RackController: ObservableObject {
         connections[slot.id]?.reconnect()
     }
 
+    func restart(_ slot: Slot) async {
+        log("Restarting \(slot.name)")
+        await deactivate(slot)
+        guard let idx = slots.firstIndex(where: { $0.id == slot.id }) else { return }
+        slots[idx].isActive = true
+        saveSlots()
+        let conn = makeConnection(for: slots[idx])
+        if slots[idx].isLocal { launchProcess(for: slots[idx], conn: conn) }
+        else                  { conn.activate() }
+    }
+
     func connection(for slot: Slot) -> SlotConnection? {
         connections[slot.id]
     }

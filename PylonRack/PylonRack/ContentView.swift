@@ -81,7 +81,9 @@ struct ContentView: View {
     @ViewBuilder
     private var rightPanel: some View {
         if let slot = selectedSlot, let conn = rack.connection(for: slot) {
-            SlotDetailView(slot: slot, conn: conn)
+            SlotDetailView(slot: slot, conn: conn,
+                           onReconnect: { rack.reconnect(slot) },
+                           onRestart:   { Task { await rack.restart(slot) } })
         } else {
             emptyState
         }
@@ -113,6 +115,8 @@ struct ContentView: View {
 struct SlotDetailView: View {
     let slot: Slot
     @ObservedObject var conn: SlotConnection
+    var onReconnect: () -> Void
+    var onRestart:   () -> Void
 
     var body: some View {
         VStack(spacing: 0) {
@@ -134,8 +138,21 @@ struct SlotDetailView: View {
 
                 Spacer()
 
+                // Smart refresh — always visible when active
+                if slot.isActive && conn.status != .connecting && conn.status != .disconnecting {
+                    Button {
+                        refreshAction(slot: slot, conn: conn)
+                    } label: {
+                        Image(systemName: "arrow.clockwise")
+                            .font(.system(size: 12))
+                    }
+                    .buttonStyle(RackIconButtonStyle())
+                    .help(refreshTooltip(conn: conn))
+                }
+
                 // Log toggle — only when connected and has UI
-                if conn.manifest?.uiURL != nil {
+                if (conn.status == .connected || conn.status == .warning),
+                   conn.manifest?.uiURL != nil {
                     Button {
                         conn.showLog.toggle()
                         if conn.showLog { conn.requestLog() }
@@ -153,8 +170,10 @@ struct SlotDetailView: View {
 
             Divider()
 
-            // Controls header
-            SlotControlsView(slot: slot, conn: conn)
+            // Controls header — only when connected or warning
+            if conn.status == .connected || conn.status == .warning {
+                SlotControlsView(slot: slot, conn: conn)
+            }
 
             // Body
             bodyContent
@@ -171,6 +190,24 @@ struct SlotDetailView: View {
         if slot.isActive && conn.status == .missing { return "Connecting…" }
         if !slot.isActive { return "Inactive" }
         return conn.status.label
+    }
+
+    // MARK: - Smart refresh
+
+    private func refreshAction(slot: Slot, conn: SlotConnection) {
+        switch conn.status {
+        case .connected, .warning: onReconnect()
+        case .error, .missing:     onRestart()
+        default: break
+        }
+    }
+
+    private func refreshTooltip(conn: SlotConnection) -> String {
+        switch conn.status {
+        case .connected, .warning: return "Reconnect"
+        case .error, .missing:     return "Restart"
+        default:                   return "Refresh"
+        }
     }
 
     @ViewBuilder
