@@ -2,7 +2,7 @@ import Foundation
 
 @MainActor
 final class RackController: ObservableObject {
-    @Published var slots: [Slot] = []
+    @Published var slots:          [Slot] = []
     @Published var selectedSlotId: UUID?
 
     var rackSummary: String {
@@ -13,7 +13,7 @@ final class RackController: ObservableObject {
         var parts = ["\(total) slot\(total == 1 ? "" : "s")"]
         if running  > 0 { parts.append("\(running) running") }
         if inactive > 0 { parts.append("\(inactive) inactive") }
-        return parts.joined(separator: " \u{00B7} ")
+        return parts.joined(separator: " · ")
     }
 
     private var connections:  [UUID: SlotConnection]  = [:]
@@ -22,17 +22,22 @@ final class RackController: ObservableObject {
     private var runtimePorts: [UUID: Int]             = [:]
 
     private let slotsURL: URL
+    private let settingsStore: SettingsStore
 
     convenience init() {
         let dir = FileManager.default.urls(for: .applicationSupportDirectory,
                                            in: .userDomainMask).first!
             .appendingPathComponent("PylonRack")
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        self.init(slotsURL: dir.appendingPathComponent("slots.json"))
+        self.init(
+            slotsURL:      dir.appendingPathComponent("slots.json"),
+            settingsStore: SettingsStore()
+        )
     }
 
-    init(slotsURL: URL) {
-        self.slotsURL = slotsURL
+    init(slotsURL: URL, settingsStore: SettingsStore = SettingsStore()) {
+        self.slotsURL      = slotsURL
+        self.settingsStore = settingsStore
         loadSlots()
         for slot in slots {
             let conn = makeConnection(for: slot)
@@ -52,8 +57,7 @@ final class RackController: ObservableObject {
         s.isActive = false
         if let c = config { configs[s.id] = c }
         slots.append(s)
-        let conn = makeConnection(for: s)
-        conn.deactivate()
+        makeConnection(for: s).deactivate()
         saveSlots()
     }
 
@@ -103,7 +107,6 @@ final class RackController: ObservableObject {
         connections[slot.id]?.statusMessage = "Disconnecting…"
 
         if slots[idx].isLocal {
-            // 1. WS shutdown — only wait if connection is actually active
             let connIsActive = connections[slot.id].map {
                 $0.status == .connected || $0.status == .warning || $0.status == .connecting
             } ?? false
@@ -111,24 +114,16 @@ final class RackController: ObservableObject {
                 connections[slot.id]?.sendShutdown()
                 try? await Task.sleep(nanoseconds: 3_000_000_000)
             }
-
-            // 2. Stop script
             if let config = configs[slot.id], let stopCmd = config.stop,
                let path = slots[idx].localPath {
                 await processes[slot.id]?.runScript(stopCmd, workingDir: path)
             }
-
-            // 3. SIGTERM + poll
             processes[slot.id]?.sendSIGTERM()
             for _ in 0..<30 {
                 if processes[slot.id]?.isRunning != true { break }
                 try? await Task.sleep(nanoseconds: 100_000_000)
             }
-
-            // 4. SIGKILL
-            if processes[slot.id]?.isRunning == true {
-                processes[slot.id]?.sendSIGKILL()
-            }
+            if processes[slot.id]?.isRunning == true { processes[slot.id]?.sendSIGKILL() }
             processes.removeValue(forKey: slot.id)
             runtimePorts.removeValue(forKey: slot.id)
         }
@@ -142,7 +137,7 @@ final class RackController: ObservableObject {
 
     @discardableResult
     private func makeConnection(for slot: Slot) -> SlotConnection {
-        let conn = SlotConnection(slot: slot)
+        let conn = SlotConnection(slot: slot, settings: settingsStore.current)
         connections[slot.id] = conn
         return conn
     }
@@ -164,7 +159,7 @@ final class RackController: ObservableObject {
         runtimePorts[slot.id] = port
 
         let proc = SlotProcess()
-        proc.onOutput = { [weak conn] text in conn?.appendProcessLog(text) }
+        proc.onOutput    = { [weak conn] text in conn?.appendProcessLog(text) }
         proc.onTerminate = { [weak self, weak conn] in
             guard let self, let conn else { return }
             if conn.status == .connected || conn.status == .warning {
@@ -206,8 +201,6 @@ final class RackController: ObservableObject {
     }
 
     private func saveSlots() {
-        if let data = try? JSONEncoder().encode(slots) {
-            try? data.write(to: slotsURL)
-        }
+        try? JSONEncoder().encode(slots).write(to: slotsURL)
     }
 }

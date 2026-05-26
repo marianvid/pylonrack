@@ -136,7 +136,7 @@ struct AddSlotView: View {
         panel.canChooseFiles        = false
         panel.canChooseDirectories  = true
         panel.allowsMultipleSelection = false
-        panel.directoryURL = URL(fileURLWithPath: AppSettings.shared.defaultLocation)
+        panel.directoryURL = URL(fileURLWithPath: SettingsStore().current.defaultLocation)
         panel.prompt       = "Open"
         panel.message      = "Select a PylonRack application folder"
 

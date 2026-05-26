@@ -14,7 +14,7 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "AA000050"
+               BlueprintIdentifier = "AA_TGT"
                BuildableName = "PylonRack.app"
                BlueprintName = "PylonRack"
                ReferencedContainer = "container:PylonRack.xcodeproj">
@@ -28,7 +28,7 @@
             buildForAnalyzing = "NO">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "BB000050"
+               BlueprintIdentifier = "BB_TGT"
                BuildableName = "PylonRackTests.xctest"
                BlueprintName = "PylonRackTests"
                ReferencedContainer = "container:PylonRack.xcodeproj">
@@ -46,7 +46,7 @@
             skipped = "NO">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "BB000050"
+               BlueprintIdentifier = "BB_TGT"
                BuildableName = "PylonRackTests.xctest"
                BlueprintName = "PylonRackTests"
                ReferencedContainer = "container:PylonRack.xcodeproj">
@@ -68,7 +68,7 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "AA000050"
+            BlueprintIdentifier = "AA_TGT"
             BuildableName = "PylonRack.app"
             BlueprintName = "PylonRack"
             ReferencedContainer = "container:PylonRack.xcodeproj">

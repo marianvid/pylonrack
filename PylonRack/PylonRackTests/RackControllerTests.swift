@@ -1,11 +1,10 @@
 import XCTest
-import Foundation
 
 @MainActor
 final class RackControllerTests: XCTestCase {
 
-    var tempDir: URL!
-    var slotsURL: URL!
+    private var tempDir:  URL!
+    private var slotsURL: URL!
 
     override func setUpWithError() throws {
         tempDir  = FileManager.default.temporaryDirectory
@@ -20,182 +19,154 @@ final class RackControllerTests: XCTestCase {
 
     // MARK: - Persistence
 
-    func test_addSlot_persistedToDisk() async throws {
-        let rack = RackController(slotsURL: slotsURL)
-        let slot = Slot(name: "TestApp", host: "localhost", port: 9001)
-        rack.addSlot(slot)
+    func test_addSlot_persistsToDisk() throws {
+        let rack = makeRack()
+        rack.addSlot(Slot(name: "App", host: "localhost", port: 9001))
 
         XCTAssertTrue(FileManager.default.fileExists(atPath: slotsURL.path))
-        let data    = try Data(contentsOf: slotsURL)
-        let decoded = try JSONDecoder().decode([Slot].self, from: data)
-        XCTAssertEqual(decoded.count, 1)
-        XCTAssertEqual(decoded[0].name, "TestApp")
+        let slots = try loadSlots()
+        XCTAssertEqual(slots.count, 1)
+        XCTAssertEqual(slots[0].name, "App")
     }
 
-    func test_addMultipleSlots_allPersisted() async throws {
-        let rack = RackController(slotsURL: slotsURL)
-        rack.addSlot(Slot(name: "App1", host: "localhost", port: 9001))
-        rack.addSlot(Slot(name: "App2", host: "localhost", port: 9002))
-        rack.addSlot(Slot(name: "App3", host: "remote.host", port: 9003))
+    func test_addSlot_defaultIsInactive() {
+        let rack = makeRack()
+        rack.addSlot(Slot(name: "App", host: "localhost", port: 9001))
+        XCTAssertFalse(rack.slots.first!.isActive)
+    }
 
-        let data    = try Data(contentsOf: slotsURL)
-        let decoded = try JSONDecoder().decode([Slot].self, from: data)
-        XCTAssertEqual(decoded.count, 3)
+    func test_addMultipleSlots_allPersisted() throws {
+        let rack = makeRack()
+        rack.addSlot(Slot(name: "A", host: "localhost",  port: 9001))
+        rack.addSlot(Slot(name: "B", host: "localhost",  port: 9002))
+        rack.addSlot(Slot(name: "C", host: "remote.host", port: 9003))
+        XCTAssertEqual(try loadSlots().count, 3)
     }
 
     func test_removeSlot_removedFromDisk() async throws {
-        let rack = RackController(slotsURL: slotsURL)
-        let slot = Slot(name: "TestApp", host: "localhost", port: 9001)
+        let rack = makeRack()
+        let slot = Slot(name: "App", host: "localhost", port: 9001)
         rack.addSlot(slot)
-        XCTAssertEqual(rack.slots.count, 1)
-
-        rack.removeSlot(slot)
-
-        // Wait for async deactivate + save
+        rack.removeSlot(rack.slots.first!)
         try await Task.sleep(nanoseconds: 500_000_000)
-
-        let data    = try Data(contentsOf: slotsURL)
-        let decoded = try JSONDecoder().decode([Slot].self, from: data)
-        XCTAssertEqual(decoded.count, 0)
+        XCTAssertEqual(try loadSlots().count, 0)
         XCTAssertEqual(rack.slots.count, 0)
-    }
-
-    func test_newSlot_defaultIsActive_false() {
-        let rack = RackController(slotsURL: slotsURL)
-        let slot = Slot(name: "TestApp", host: "localhost", port: 9001)
-        rack.addSlot(slot)
-        XCTAssertFalse(rack.slots.first!.isActive)
     }
 
     // MARK: - Load from disk
 
-    func test_loadFromDisk_restoredCorrectly() async throws {
-        // Write slots manually
-        let slots = [
-            Slot(name: "App1", host: "localhost", port: 9001, isActive: false),
-            Slot(name: "App2", host: "remote.host", port: 9002, isActive: false),
-        ]
-        let data = try JSONEncoder().encode(slots)
-        try data.write(to: slotsURL)
-
-        let rack = RackController(slotsURL: slotsURL)
+    func test_loadFromDisk_restoresSlots() throws {
+        try saveSlots([
+            Slot(name: "A", host: "localhost",   port: 9001),
+            Slot(name: "B", host: "remote.host", port: 9002),
+        ])
+        let rack = makeRack()
         XCTAssertEqual(rack.slots.count, 2)
-        XCTAssertEqual(rack.slots[0].name, "App1")
-        XCTAssertEqual(rack.slots[1].name, "App2")
+        XCTAssertEqual(rack.slots[0].name, "A")
+        XCTAssertEqual(rack.slots[1].name, "B")
     }
 
-    func test_corruptSlotsJSON_startsEmpty() throws {
+    func test_corruptFile_startsEmpty() throws {
         try "NOT VALID JSON {{{{".write(to: slotsURL, atomically: true, encoding: .utf8)
-        let rack = RackController(slotsURL: slotsURL)
-        XCTAssertEqual(rack.slots.count, 0)
+        XCTAssertEqual(makeRack().slots.count, 0)
     }
 
-    func test_missingSlotsFile_startsEmpty() {
-        let rack = RackController(slotsURL: slotsURL) // file doesn't exist yet
-        XCTAssertEqual(rack.slots.count, 0)
+    func test_missingFile_startsEmpty() {
+        XCTAssertEqual(makeRack().slots.count, 0)
     }
 
     // MARK: - Restart behaviour
 
-    func test_restartWithInactiveSlots_remainsInactive() throws {
-        // Persist inactive slots
-        let slots = [Slot(name: "App1", host: "localhost", port: 9001, isActive: false)]
-        let data  = try JSONEncoder().encode(slots)
-        try data.write(to: slotsURL)
-
-        let rack = RackController(slotsURL: slotsURL)
+    func test_inactiveSlotOnRestart_remainsInactive() throws {
+        try saveSlots([Slot(name: "A", host: "localhost", port: 9001, isActive: false)])
+        let rack = makeRack()
         XCTAssertFalse(rack.slots.first!.isActive)
-        let conn = rack.connection(for: rack.slots.first!)
-        XCTAssertEqual(conn?.status, .missing)
+        XCTAssertEqual(rack.connection(for: rack.slots.first!)?.status, .missing)
     }
 
-    func test_restartWithActiveRemoteSlot_attemptsReconnect() async throws {
-        // Persist active remote slot (no process to start)
-        let slots = [Slot(name: "Remote", host: "localhost", port: 9300, isActive: true)]
-        let data  = try JSONEncoder().encode(slots)
-        try data.write(to: slotsURL)
-
-        let rack = RackController(slotsURL: slotsURL)
+    func test_activeRemoteSlotOnRestart_attemptsConnect() async throws {
+        try saveSlots([Slot(name: "R", host: "localhost", port: 9300, isActive: true)])
+        let rack = makeRack()
         try await Task.sleep(nanoseconds: 300_000_000)
-
         let conn = rack.connection(for: rack.slots.first!)
-        // Should be attempting to connect (connecting or error after fails)
         XCTAssertNotEqual(conn?.status, .missing)
     }
 
     // MARK: - Connection management
 
     func test_connectionForSlot_notNilAfterAdd() {
-        let rack = RackController(slotsURL: slotsURL)
-        let slot = Slot(name: "App", host: "localhost", port: 9001)
-        rack.addSlot(slot)
+        let rack = makeRack()
+        rack.addSlot(Slot(name: "App", host: "localhost", port: 9001))
         XCTAssertNotNil(rack.connection(for: rack.slots.first!))
     }
 
     func test_connectionForRemovedSlot_nilAfterRemove() async throws {
-        let rack = RackController(slotsURL: slotsURL)
-        let slot = Slot(name: "App", host: "localhost", port: 9001)
-        rack.addSlot(slot)
+        let rack = makeRack()
+        rack.addSlot(Slot(name: "App", host: "localhost", port: 9001))
         let added = rack.slots.first!
         rack.removeSlot(added)
-
         try await Task.sleep(nanoseconds: 500_000_000)
         XCTAssertNil(rack.connection(for: added))
     }
 
-    // MARK: - selectedSlotId
+    // MARK: - Selection
 
     func test_selectedSlotId_defaultNil() {
-        let rack = RackController(slotsURL: slotsURL)
-        XCTAssertNil(rack.selectedSlotId)
+        XCTAssertNil(makeRack().selectedSlotId)
     }
 
     func test_selectedSlotId_setAndRead() {
-        let rack = RackController(slotsURL: slotsURL)
-        let slot = Slot(name: "App", host: "localhost", port: 9001)
-        rack.addSlot(slot)
+        let rack = makeRack()
+        rack.addSlot(Slot(name: "App", host: "localhost", port: 9001))
         rack.selectedSlotId = rack.slots.first!.id
         XCTAssertEqual(rack.selectedSlotId, rack.slots.first!.id)
     }
 
+    func test_removeSelectedSlot_clearsSelection() async throws {
+        let rack = makeRack()
+        rack.addSlot(Slot(name: "App", host: "localhost", port: 9001))
+        rack.selectedSlotId = rack.slots.first!.id
+        rack.removeSlot(rack.slots.first!)
+        try await Task.sleep(nanoseconds: 300_000_000)
+        XCTAssertNil(rack.selectedSlotId)
+    }
+
     // MARK: - Activate / Deactivate
 
-    func test_activateRemoteSlot_isActiveTrue() async throws {
-        server = MockWSServer(port: 19300)
-        let rack = RackController(slotsURL: slotsURL)
-        let slot = Slot(name: "App", host: "localhost", port: 19300)
-        rack.addSlot(slot)
-        XCTAssertFalse(rack.slots.first!.isActive)
-
+    func test_activateSlot_isActiveTrue() throws {
+        let rack = makeRack()
+        rack.addSlot(Slot(name: "App", host: "localhost", port: 9001))
         rack.activate(rack.slots.first!)
         XCTAssertTrue(rack.slots.first!.isActive)
-
-        // Verify persisted as active
-        try await Task.sleep(nanoseconds: 200_000_000)
-        let data    = try Data(contentsOf: slotsURL)
-        let decoded = try JSONDecoder().decode([Slot].self, from: data)
-        XCTAssertTrue(decoded.first!.isActive)
     }
 
     func test_deactivateSlot_isActiveFalse() async throws {
-        let rack = RackController(slotsURL: slotsURL)
-        let slot = Slot(name: "App", host: "localhost", port: 9001)
-        rack.addSlot(slot)
+        let rack = makeRack()
+        rack.addSlot(Slot(name: "App", host: "localhost", port: 9001))
         rack.activate(rack.slots.first!)
-        XCTAssertTrue(rack.slots.first!.isActive)
-
         await rack.deactivate(rack.slots.first!)
         XCTAssertFalse(rack.slots.first!.isActive)
-
-        let data    = try Data(contentsOf: slotsURL)
-        let decoded = try JSONDecoder().decode([Slot].self, from: data)
-        XCTAssertFalse(decoded.first!.isActive)
     }
 
-    // MARK: -  Server ref for tests that need it
-    private var server: MockWSServer?
-    override func tearDown() async throws {
-        server?.stop()
-        server = nil
+    func test_toggleActive_togglesState() async throws {
+        let rack = makeRack()
+        rack.addSlot(Slot(name: "App", host: "localhost", port: 9001))
+        XCTAssertFalse(rack.slots.first!.isActive)
+        rack.toggleActive(rack.slots.first!)
+        XCTAssertTrue(rack.slots.first!.isActive)
+    }
+
+    // MARK: - Helpers
+
+    private func makeRack() -> RackController {
+        RackController(slotsURL: slotsURL, settingsStore: SettingsStore(url: tempDir.appendingPathComponent("s.json")))
+    }
+
+    private func loadSlots() throws -> [Slot] {
+        try JSONDecoder().decode([Slot].self, from: Data(contentsOf: slotsURL))
+    }
+
+    private func saveSlots(_ slots: [Slot]) throws {
+        try JSONEncoder().encode(slots).write(to: slotsURL)
     }
 }

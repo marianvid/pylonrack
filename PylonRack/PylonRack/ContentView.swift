@@ -127,7 +127,7 @@ struct SlotDetailView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Top bar — name + status only
+            // Top bar — name + status + log toggle
             HStack(spacing: 8) {
                 Circle()
                     .fill(topBarColor)
@@ -144,12 +144,26 @@ struct SlotDetailView: View {
                     .foregroundStyle(.secondary)
 
                 Spacer()
+
+                // Log toggle
+                Button {
+                    conn.showLog.toggle()
+                    if conn.showLog { conn.requestLog() }
+                } label: {
+                    Image(systemName: conn.showLog ? "doc.text.fill" : "doc.text")
+                        .font(.system(size: 12))
+                }
+                .buttonStyle(RackIconButtonStyle())
+                .help(conn.showLog ? "Hide log" : "Show log")
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 10)
             .background(.bar)
 
             Divider()
+
+            // Controls header (only when manifest has controls)
+            SlotControlsView(slot: slot, conn: conn)
 
             // Content
             if conn.showLog {
@@ -174,7 +188,15 @@ struct SlotDetailView: View {
 
     @ViewBuilder
     private var mainContent: some View {
-        VStack(spacing: 12) {
+        if let uiURL = conn.manifest?.uiURL, let url = URL(string: uiURL) {
+            WebViewPanel(url: url)
+        } else {
+            statusContent
+        }
+    }
+
+    private var statusContent: some View {
+        VStack(spacing: 8) {
             if !slot.isActive && conn.status == .missing {
                 Image(systemName: "pause.circle")
                     .font(.system(size: 36)).foregroundStyle(.quaternary)
@@ -195,8 +217,10 @@ struct SlotDetailView: View {
                     .font(.system(size: 36)).foregroundStyle(.green)
                 Text("Connected")
                     .font(.title3).foregroundStyle(.secondary)
-                Text("UI panel and action buttons \u{2014} coming next.")
-                    .font(.caption).foregroundStyle(.tertiary)
+                if !conn.appMessage.isEmpty {
+                    Text(conn.appMessage)
+                        .font(.caption).foregroundStyle(.tertiary)
+                }
             } else {
                 Image(systemName: "exclamationmark.triangle")
                     .font(.system(size: 36)).foregroundStyle(.orange)

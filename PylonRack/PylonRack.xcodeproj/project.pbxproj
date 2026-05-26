@@ -1,254 +1,197 @@
 // !$*UTF8*$!
 {
 	archiveVersion = 1;
-	classes = {
-	};
+	classes = { };
 	objectVersion = 56;
 	objects = {
 
 /* Begin PBXBuildFile section */
-		/* App target */
-		AA000001 /* PylonRackApp.swift in Sources */     = {isa = PBXBuildFile; fileRef = AA100001; };
-		AA000002 /* ContentView.swift in Sources */         = {isa = PBXBuildFile; fileRef = AA100002; };
-		AA000003 /* AppSettings.swift in Sources */         = {isa = PBXBuildFile; fileRef = AA100003; };
-		AA000004 /* SettingsView.swift in Sources */        = {isa = PBXBuildFile; fileRef = AA100004; };
-		AA000005 /* Slot.swift in Sources */                = {isa = PBXBuildFile; fileRef = AA100005; };
-		AA000006 /* SlotStatus.swift in Sources */          = {isa = PBXBuildFile; fileRef = AA100006; };
-		AA000007 /* SlotManifest.swift in Sources */        = {isa = PBXBuildFile; fileRef = AA100007; };
-		AA000008 /* SlotConnection.swift in Sources */      = {isa = PBXBuildFile; fileRef = AA100008; };
-		AA000009 /* SlotProcess.swift in Sources */         = {isa = PBXBuildFile; fileRef = AA100009; };
-		AA000010 /* SlotRowView.swift in Sources */         = {isa = PBXBuildFile; fileRef = AA100010; };
-		AA000011 /* RackController.swift in Sources */      = {isa = PBXBuildFile; fileRef = AA100011; };
-		AA000012 /* RackFolderDelegate.swift in Sources */  = {isa = PBXBuildFile; fileRef = AA100012; };
-		AA000013 /* RackIconButtonStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100013; };
-		AA000014 /* AddSlotView.swift in Sources */         = {isa = PBXBuildFile; fileRef = AA100014; };
-		AA000015 /* LocalSlotConfig.swift in Sources */     = {isa = PBXBuildFile; fileRef = AA100015; };
-		AA000016 /* PortFinder.swift in Sources */          = {isa = PBXBuildFile; fileRef = AA100016; };
-		AA000017 /* LogView.swift in Sources */             = {isa = PBXBuildFile; fileRef = AA100017; };
-		AA000018 /* StatusBarView.swift in Sources */       = {isa = PBXBuildFile; fileRef = AA100018; };
-		AA000019 /* Assets.xcassets in Resources */         = {isa = PBXBuildFile; fileRef = AA100019; };
-		AA000025 /* PylonRack.icns in Resources */               = {isa = PBXBuildFile; fileRef = AA100025; };
-		/* Test target */
-		BB000001 /* PylonRackTests.swift in Sources */   = {isa = PBXBuildFile; fileRef = BB100001; };
-		BB000002 /* AppSettings.swift in Sources */         = {isa = PBXBuildFile; fileRef = AA100003; };
-		BB000003 /* LocalSlotConfig.swift in Sources */     = {isa = PBXBuildFile; fileRef = AA100015; };
-		BB000004 /* PortFinder.swift in Sources */          = {isa = PBXBuildFile; fileRef = AA100016; };
-		BB000005 /* Slot.swift in Sources */                = {isa = PBXBuildFile; fileRef = AA100005; };
-		BB000006 /* SlotManifest.swift in Sources */        = {isa = PBXBuildFile; fileRef = AA100007; };
-		BB000007 /* SlotStatus.swift in Sources */          = {isa = PBXBuildFile; fileRef = AA100006; };
-		BB000008 /* MockWSServer.swift in Sources */        = {isa = PBXBuildFile; fileRef = BB100008; };
-		BB000009 /* SlotConnection_T.swift in Sources */    = {isa = PBXBuildFile; fileRef = BB100009; };
-		BB000010 /* RackController_T.swift in Sources */    = {isa = PBXBuildFile; fileRef = BB100010; };
-		BB000011 /* SlotProcess_T.swift in Sources */       = {isa = PBXBuildFile; fileRef = BB100011; };
-		BB000012 /* Network.framework in Frameworks */      = {isa = PBXBuildFile; fileRef = BB100012; };
+		AA0001 = {isa = PBXBuildFile; fileRef = AA1001; };
+		AA0002 = {isa = PBXBuildFile; fileRef = AA1002; };
+		AA0003 = {isa = PBXBuildFile; fileRef = AA1003; };
+		AA0004 = {isa = PBXBuildFile; fileRef = AA1004; };
+		AA0005 = {isa = PBXBuildFile; fileRef = AA1005; };
+		AA0006 = {isa = PBXBuildFile; fileRef = AA1006; };
+		AA0007 = {isa = PBXBuildFile; fileRef = AA1007; };
+		AA0008 = {isa = PBXBuildFile; fileRef = AA1008; };
+		AA0009 = {isa = PBXBuildFile; fileRef = AA1009; };
+		AA0010 = {isa = PBXBuildFile; fileRef = AA1010; };
+		AA0011 = {isa = PBXBuildFile; fileRef = AA1011; };
+		AA0012 = {isa = PBXBuildFile; fileRef = AA1012; };
+		AA0013 = {isa = PBXBuildFile; fileRef = AA1013; };
+		AA0014 = {isa = PBXBuildFile; fileRef = AA1014; };
+		AA0015 = {isa = PBXBuildFile; fileRef = AA1015; };
+		AA0016 = {isa = PBXBuildFile; fileRef = AA1016; };
+		AA0017 = {isa = PBXBuildFile; fileRef = AA1017; };
+		AA0018 = {isa = PBXBuildFile; fileRef = AA1018; };
+		AA0019 = {isa = PBXBuildFile; fileRef = AA1019; };
+		AA0020 = {isa = PBXBuildFile; fileRef = AA1020; };
+		AA0021 = {isa = PBXBuildFile; fileRef = AA1021; };
+		AA0030 = {isa = PBXBuildFile; fileRef = AA1030; };
+		AA0031 = {isa = PBXBuildFile; fileRef = AA1031; };
+		BB0001 = {isa = PBXBuildFile; fileRef = BB1001; };
+		BB0002 = {isa = PBXBuildFile; fileRef = BB1002; };
+		BB0003 = {isa = PBXBuildFile; fileRef = BB1003; };
+		BB0004 = {isa = PBXBuildFile; fileRef = BB1004; };
+		BB0005 = {isa = PBXBuildFile; fileRef = BB1005; };
+		BB0006 = {isa = PBXBuildFile; fileRef = BB1006; };
+		BB0007 = {isa = PBXBuildFile; fileRef = BB1007; };
+		BB0010 = {isa = PBXBuildFile; fileRef = BB1010; };
+		BS0001 = {isa = PBXBuildFile; fileRef = AA1006; };
+		BS0002 = {isa = PBXBuildFile; fileRef = AA1007; };
+		BS0003 = {isa = PBXBuildFile; fileRef = AA1008; };
+		BS0004 = {isa = PBXBuildFile; fileRef = AA1009; };
+		BS0005 = {isa = PBXBuildFile; fileRef = AA1010; };
+		BS0006 = {isa = PBXBuildFile; fileRef = AA1012; };
+		BS0007 = {isa = PBXBuildFile; fileRef = AA1013; };
+		BS0008 = {isa = PBXBuildFile; fileRef = AA1016; };
+		BS0009 = {isa = PBXBuildFile; fileRef = AA1017; };
+		BS0010 = {isa = PBXBuildFile; fileRef = AA1003; };
+		BS0011 = {isa = PBXBuildFile; fileRef = AA1004; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		TGT_PROXY = {
+			isa = PBXContainerItemProxy;
+			containerPortal = PROJECT;
+			proxyType = 1;
+			remoteGlobalIDString = AA_TGT;
+			remoteInfo = PylonRack;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
-		AA000020 /* PylonRack.app */     = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PylonRack.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		AA100001 /* PylonRackApp.swift */     = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PylonRackApp.swift;     sourceTree = "<group>"; };
-		AA100002 /* ContentView.swift */         = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift;         sourceTree = "<group>"; };
-		AA100003 /* AppSettings.swift */         = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift;         sourceTree = "<group>"; };
-		AA100004 /* SettingsView.swift */        = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift;        sourceTree = "<group>"; };
-		AA100005 /* Slot.swift */                = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Slot.swift;                sourceTree = "<group>"; };
-		AA100006 /* SlotStatus.swift */          = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SlotStatus.swift;          sourceTree = "<group>"; };
-		AA100007 /* SlotManifest.swift */        = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SlotManifest.swift;        sourceTree = "<group>"; };
-		AA100008 /* SlotConnection.swift */      = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SlotConnection.swift;      sourceTree = "<group>"; };
-		AA100009 /* SlotProcess.swift */         = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SlotProcess.swift;         sourceTree = "<group>"; };
-		AA100010 /* SlotRowView.swift */         = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SlotRowView.swift;         sourceTree = "<group>"; };
-		AA100011 /* RackController.swift */      = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RackController.swift;      sourceTree = "<group>"; };
-		AA100012 /* RackFolderDelegate.swift */  = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RackFolderDelegate.swift;  sourceTree = "<group>"; };
-		AA100013 /* RackIconButtonStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RackIconButtonStyle.swift; sourceTree = "<group>"; };
-		AA100014 /* AddSlotView.swift */         = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddSlotView.swift;         sourceTree = "<group>"; };
-		AA100015 /* LocalSlotConfig.swift */     = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalSlotConfig.swift;     sourceTree = "<group>"; };
-		AA100016 /* PortFinder.swift */          = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PortFinder.swift;          sourceTree = "<group>"; };
-		AA100017 /* LogView.swift */             = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogView.swift;             sourceTree = "<group>"; };
-		AA100018 /* StatusBarView.swift */       = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusBarView.swift;       sourceTree = "<group>"; };
-		AA100019 /* Assets.xcassets */           = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets;        sourceTree = "<group>"; };
-		AA100025 /* PylonRack.icns */                 = {isa = PBXFileReference; lastKnownFileType = image.icns;          path = PylonRack.icns;              sourceTree = "<group>"; };
-		BB000020 /* PylonRackTests.xctest */  = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PylonRackTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		BB100001 /* PylonRackTests.swift */   = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PylonRackTests.swift;   sourceTree = "<group>"; };
-		BB100008 /* MockWSServer.swift */        = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockWSServer.swift;        sourceTree = "<group>"; };
-		BB100009 /* SlotConnection_T.swift */    = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SlotConnection.swift;      sourceTree = "<group>"; };
-		BB100010 /* RackController_T.swift */    = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RackController.swift;      sourceTree = "<group>"; };
-		BB100011 /* SlotProcess_T.swift */       = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SlotProcess.swift;         sourceTree = "<group>"; };
-		BB100012 /* Network.framework */         = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Network.framework; path = System/Library/Frameworks/Network.framework; sourceTree = SDKROOT; };
+		AA0099 = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PylonRack.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		AA1001 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PylonRackApp.swift; sourceTree = "<group>"; };
+		AA1002 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		AA1003 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsStore.swift; sourceTree = "<group>"; };
+		AA1004 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemEnvironment.swift; sourceTree = "<group>"; };
+		AA1005 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		AA1006 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Slot.swift; sourceTree = "<group>"; };
+		AA1007 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SlotStatus.swift; sourceTree = "<group>"; };
+		AA1008 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SlotManifest.swift; sourceTree = "<group>"; };
+		AA1009 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SlotConnection.swift; sourceTree = "<group>"; };
+		AA1010 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SlotProcess.swift; sourceTree = "<group>"; };
+		AA1011 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SlotRowView.swift; sourceTree = "<group>"; };
+		AA1012 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RackController.swift; sourceTree = "<group>"; };
+		AA1013 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RackFolderDelegate.swift; sourceTree = "<group>"; };
+		AA1014 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RackIconButtonStyle.swift; sourceTree = "<group>"; };
+		AA1015 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddSlotView.swift; sourceTree = "<group>"; };
+		AA1016 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalSlotConfig.swift; sourceTree = "<group>"; };
+		AA1017 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PortFinder.swift; sourceTree = "<group>"; };
+		AA1018 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogView.swift; sourceTree = "<group>"; };
+		AA1019 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusBarView.swift; sourceTree = "<group>"; };
+		AA1020 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SlotControlsView.swift; sourceTree = "<group>"; };
+		AA1021 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebViewPanel.swift; sourceTree = "<group>"; };
+		AA1030 = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		AA1031 = {isa = PBXFileReference; lastKnownFileType = image.icns; path = PylonRack.icns; sourceTree = "<group>"; };
+		BB0099 = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PylonRackTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		BB1001 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PylonRackTests.swift; sourceTree = "<group>"; };
+		BB1002 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockWSServer.swift; sourceTree = "<group>"; };
+		BB1003 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsStoreTests.swift; sourceTree = "<group>"; };
+		BB1004 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SlotManifestTests.swift; sourceTree = "<group>"; };
+		BB1005 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IncomingMessageTests.swift; sourceTree = "<group>"; };
+		BB1006 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SlotConnectionTests.swift; sourceTree = "<group>"; };
+		BB1007 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RackControllerTests.swift; sourceTree = "<group>"; };
+		BB1010 = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Network.framework; path = System/Library/Frameworks/Network.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
-		AA000030 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = ();
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		BB000030 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (BB000012 /* Network.framework in Frameworks */,);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
+		AA_FW = { isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+		BB_FW = { isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (BB0010,); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		AA000040 /* Products */ = {
+		ROOT_GRP = {
 			isa = PBXGroup;
-			children = (AA000020 /* PylonRack.app */, BB000020 /* PylonRackTests.xctest */,);
-			name = Products;
+			children = (APP_GRP, TEST_GRP, FW_GRP, PROD_GRP,);
 			sourceTree = "<group>";
 		};
-		AA000041 /* PylonRack */ = {
+		PROD_GRP = { isa = PBXGroup; children = (AA0099, BB0099,); name = Products; sourceTree = "<group>"; };
+		APP_GRP = {
 			isa = PBXGroup;
-			children = (
-				AA100001 /* PylonRackApp.swift */,
-				AA100002 /* ContentView.swift */,
-				AA100003 /* AppSettings.swift */,
-				AA100004 /* SettingsView.swift */,
-				AA100005 /* Slot.swift */,
-				AA100006 /* SlotStatus.swift */,
-				AA100007 /* SlotManifest.swift */,
-				AA100008 /* SlotConnection.swift */,
-				AA100009 /* SlotProcess.swift */,
-				AA100010 /* SlotRowView.swift */,
-				AA100011 /* RackController.swift */,
-				AA100012 /* RackFolderDelegate.swift */,
-				AA100013 /* RackIconButtonStyle.swift */,
-				AA100014 /* AddSlotView.swift */,
-				AA100015 /* LocalSlotConfig.swift */,
-				AA100016 /* PortFinder.swift */,
-				AA100017 /* LogView.swift */,
-				AA100018 /* StatusBarView.swift */,
-				AA100019 /* Assets.xcassets */,
-				AA100025 /* PylonRack.icns */,
-			);
+			children = (AA1001, AA1002, AA1003, AA1004, AA1005, AA1006, AA1007, AA1008, AA1009, AA1010, AA1011, AA1012, AA1013, AA1014, AA1015, AA1016, AA1017, AA1018, AA1019, AA1020, AA1021, AA1030, AA1031,);
 			path = PylonRack;
 			sourceTree = "<group>";
 		};
-		BB000041 /* PylonRackTests */ = {
+		TEST_GRP = {
 			isa = PBXGroup;
-			children = (
-				BB100001 /* PylonRackTests.swift */,
-				BB100008 /* MockWSServer.swift */,
-				BB100009 /* SlotConnection_T.swift */,
-				BB100010 /* RackController_T.swift */,
-				BB100011 /* SlotProcess_T.swift */,
-			);
+			children = (BB1001, BB1002, BB1003, BB1004, BB1005, BB1006, BB1007,);
 			path = PylonRackTests;
 			sourceTree = "<group>";
 		};
-		AA000042 = {
-			isa = PBXGroup;
-			children = (AA000041 /* PylonRack */, BB000041 /* PylonRackTests */, AA000040 /* Products */,);
-			sourceTree = "<group>";
-		};
+		FW_GRP = { isa = PBXGroup; children = (BB1010,); name = Frameworks; sourceTree = "<group>"; };
 /* End PBXGroup section */
 
+/* Begin PBXTargetDependency section */
+		TGT_DEP = {
+			isa = PBXTargetDependency;
+			target = AA_TGT;
+			targetProxy = TGT_PROXY;
+		};
+/* End PBXTargetDependency section */
+
 /* Begin PBXNativeTarget section */
-		AA000050 /* PylonRack */ = {
+		AA_TGT = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = AA000060;
-			buildPhases = (AA000031 /* Sources */, AA000030 /* Frameworks */, AA000032 /* Resources */,);
+			buildConfigurationList = AA_CFGLIST;
+			buildPhases = (AA_SRC, AA_FW, AA_RES,);
 			buildRules = ();
 			dependencies = ();
 			name = PylonRack;
 			productName = PylonRack;
-			productReference = AA000020 /* PylonRack.app */;
+			productReference = AA0099;
 			productType = "com.apple.product-type.application";
 		};
-		BB000050 /* PylonRackTests */ = {
+		BB_TGT = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = BB000060;
-			buildPhases = (BB000031 /* Sources */, BB000030 /* Frameworks */,);
+			buildConfigurationList = BB_CFGLIST;
+			buildPhases = (BB_SRC, BB_FW,);
 			buildRules = ();
-			dependencies = ();
+			dependencies = (TGT_DEP,);
 			name = PylonRackTests;
 			productName = PylonRackTests;
-			productReference = BB000020 /* PylonRackTests.xctest */;
+			productReference = BB0099;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
-		AA000051 /* Project object */ = {
+		PROJECT = {
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 1540;
 				LastUpgradeCheck = 1540;
 				TargetAttributes = {
-					AA000050 = { CreatedOnToolsVersion = 15.4; };
-					BB000050 = { CreatedOnToolsVersion = 15.4; TestTargetID = AA000050; };
+					AA_TGT = { CreatedOnToolsVersion = 15.4; };
+					BB_TGT = { CreatedOnToolsVersion = 15.4; TestTargetID = AA_TGT; };
 				};
 			};
-			buildConfigurationList = AA000061;
+			buildConfigurationList = PROJ_CFGLIST;
 			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (en, Base,);
-			mainGroup = AA000042;
-			productRefGroup = AA000040 /* Products */;
+			mainGroup = ROOT_GRP;
+			productRefGroup = PROD_GRP;
 			projectDirPath = "";
 			projectRoot = "";
-			targets = (AA000050 /* PylonRack */, BB000050 /* PylonRackTests */,);
+			targets = (AA_TGT, BB_TGT,);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
-		AA000032 /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (AA000019 /* Assets.xcassets in Resources */, AA000025 /* PylonRack.icns in Resources */,);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
+		AA_RES = { isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (AA0030, AA0031,); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-		AA000031 /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				AA000001 /* PylonRackApp.swift in Sources */,
-				AA000002 /* ContentView.swift in Sources */,
-				AA000003 /* AppSettings.swift in Sources */,
-				AA000004 /* SettingsView.swift in Sources */,
-				AA000005 /* Slot.swift in Sources */,
-				AA000006 /* SlotStatus.swift in Sources */,
-				AA000007 /* SlotManifest.swift in Sources */,
-				AA000008 /* SlotConnection.swift in Sources */,
-				AA000009 /* SlotProcess.swift in Sources */,
-				AA000010 /* SlotRowView.swift in Sources */,
-				AA000011 /* RackController.swift in Sources */,
-				AA000012 /* RackFolderDelegate.swift in Sources */,
-				AA000013 /* RackIconButtonStyle.swift in Sources */,
-				AA000014 /* AddSlotView.swift in Sources */,
-				AA000015 /* LocalSlotConfig.swift in Sources */,
-				AA000016 /* PortFinder.swift in Sources */,
-				AA000017 /* LogView.swift in Sources */,
-				AA000018 /* StatusBarView.swift in Sources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		BB000031 /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				BB000001 /* PylonRackTests.swift in Sources */,
-				BB000008 /* MockWSServer.swift in Sources */,
-				BB000002 /* AppSettings.swift in Sources */,
-				BB000003 /* LocalSlotConfig.swift in Sources */,
-				BB000004 /* PortFinder.swift in Sources */,
-				BB000005 /* Slot.swift in Sources */,
-				BB000006 /* SlotManifest.swift in Sources */,
-				BB000007 /* SlotStatus.swift in Sources */,
-				BB000009 /* SlotConnection_T.swift in Sources */,
-				BB000010 /* RackController_T.swift in Sources */,
-				BB000011 /* SlotProcess_T.swift in Sources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
+		AA_SRC = { isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (AA0001, AA0002, AA0003, AA0004, AA0005, AA0006, AA0007, AA0008, AA0009, AA0010, AA0011, AA0012, AA0013, AA0014, AA0015, AA0016, AA0017, AA0018, AA0019, AA0020, AA0021,); runOnlyForDeploymentPostprocessing = 0; };
+		BB_SRC = { isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (BB0001, BB0002, BB0003, BB0004, BB0005, BB0006, BB0007, BS0001, BS0002, BS0003, BS0004, BS0005, BS0006, BS0007, BS0008, BS0009, BS0010, BS0011,); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXSourcesBuildPhase section */
 
 /* Begin XCBuildConfiguration section */
-		AA000070 /* Debug */ = {
+		PROJ_DBG = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -266,7 +209,7 @@
 			};
 			name = Debug;
 		};
-		AA000071 /* Release */ = {
+		PROJ_REL = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -281,11 +224,11 @@
 			};
 			name = Release;
 		};
-		AA000072 /* Debug */ = {
+		AA_DBG = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
@@ -298,18 +241,20 @@
 				LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/../Frameworks",);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 1.0;
+				OTHER_LDFLAGS = ("-framework", "WebKit",);
 				PRODUCT_BUNDLE_IDENTIFIER = com.marianvid.pylonrack;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				DEFINES_MODULE = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 			};
 			name = Debug;
 		};
-		AA000073 /* Release */ = {
+		AA_REL = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
@@ -322,17 +267,18 @@
 				LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/../Frameworks",);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 1.0;
+				OTHER_LDFLAGS = ("-framework", "WebKit",);
 				PRODUCT_BUNDLE_IDENTIFIER = com.marianvid.pylonrack;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				DEFINES_MODULE = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 			};
 			name = Release;
 		};
-		BB000072 /* Debug */ = {
+		BB_DBG = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				CODE_SIGN_ENTITLEMENTS = PylonRackTests/PylonRackTests.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
@@ -345,10 +291,9 @@
 			};
 			name = Debug;
 		};
-		BB000073 /* Release */ = {
+		BB_REL = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				CODE_SIGN_ENTITLEMENTS = PylonRackTests/PylonRackTests.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
@@ -364,26 +309,11 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		AA000061 = {
-			isa = XCConfigurationList;
-			buildConfigurations = (AA000070 /* Debug */, AA000071 /* Release */,);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
-		AA000060 = {
-			isa = XCConfigurationList;
-			buildConfigurations = (AA000072 /* Debug */, AA000073 /* Release */,);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
-		BB000060 = {
-			isa = XCConfigurationList;
-			buildConfigurations = (BB000072 /* Debug */, BB000073 /* Release */,);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
+		PROJ_CFGLIST = { isa = XCConfigurationList; buildConfigurations = (PROJ_DBG, PROJ_REL,); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+		AA_CFGLIST = { isa = XCConfigurationList; buildConfigurations = (AA_DBG, AA_REL,); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+		BB_CFGLIST = { isa = XCConfigurationList; buildConfigurations = (BB_DBG, BB_REL,); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
 /* End XCConfigurationList section */
 
 	};
-	rootObject = AA000051 /* Project object */;
+	rootObject = PROJECT;
 }
