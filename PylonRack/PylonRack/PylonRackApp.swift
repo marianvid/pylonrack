@@ -33,6 +33,12 @@ struct PylonRackApp: App {
         }
         .windowResizability(.contentSize)
 
+        Window("Rack Log", id: "rack-log") {
+            RackLogView()
+                .environmentObject(rack)
+        }
+        .windowResizability(.contentSize)
+
         Settings {
             SettingsView(store: settingsStore, system: system)
         }
@@ -66,6 +72,11 @@ struct MenuBarMenuView: View {
 
         Button("Open PylonRack") {
             openWindow(id: "main")
+            NSApp.activate(ignoringOtherApps: true)
+        }
+
+        Button("Rack Log…") {
+            openWindow(id: "rack-log")
             NSApp.activate(ignoringOtherApps: true)
         }
 

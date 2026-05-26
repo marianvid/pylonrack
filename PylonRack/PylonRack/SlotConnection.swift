@@ -85,6 +85,9 @@ final class SlotConnection: ObservableObject {
     // Injected settings — avoids singleton coupling, enables testing without globals.
     private let settings: AppConfig
 
+    // Optional callback to report errors to the rack log
+    var onRackLog: ((String) -> Void)?
+
     private var runtimePort:    Int?
     private var wsTask:         URLSessionWebSocketTask?
     private var urlSession:     URLSession?
@@ -316,6 +319,7 @@ final class SlotConnection: ObservableObject {
         if reconnectCount > max {
             status         = .error
             statusMessage  = "Cannot connect after \(max) attempts"
+            onRackLog?("[\(slot.name)] Cannot connect after \(max) attempts")
             isReconnecting = false
             return
         }

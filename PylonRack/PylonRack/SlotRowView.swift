@@ -4,6 +4,7 @@ struct SlotRowView: View {
     let slot: Slot
     @ObservedObject var conn: SlotConnection
     var onToggleActive: () -> Void
+    var onReconnect:    () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -13,9 +14,8 @@ struct SlotRowView: View {
                 .font(.system(size: 13, weight: .medium))
                 .lineLimit(1)
 
-            // Row 2 — status dot + label + controls
+            // Row 2 — status dot + label + reconnect + activate
             HStack(spacing: 4) {
-                // Animated status dot
                 Circle()
                     .fill(statusColor)
                     .frame(width: 7, height: 7)
@@ -29,17 +29,15 @@ struct SlotRowView: View {
 
                 Spacer()
 
-                // Log toggle
-                Button {
-                    conn.showLog.toggle()
-                    if conn.showLog { conn.requestLog() }
-                } label: {
-                    Image(systemName: conn.showLog ? "doc.text.fill" : "doc.text")
-                        .font(.system(size: 11))
-                        .foregroundStyle(conn.showLog ? Color.white.opacity(0.9) : .secondary)
+                // Reconnect — only when active and in error/warning
+                if slot.isActive && (conn.status == .error || conn.status == .warning) {
+                    Button { onReconnect() } label: {
+                        Image(systemName: "arrow.clockwise")
+                            .font(.system(size: 11))
+                    }
+                    .buttonStyle(RackIconButtonStyle())
+                    .help("Reconnect")
                 }
-                .buttonStyle(RackIconButtonStyle())
-                .help(conn.showLog ? "Show UI panel" : "Show log")
 
                 // Activate / Deactivate
                 Button { onToggleActive() } label: {
@@ -67,7 +65,6 @@ struct SlotRowView: View {
     }
 
     private var statusText: String {
-        // Show connecting immediately after activate — before conn.status updates
         if slot.isActive && conn.status == .missing { return "Connecting…" }
         return conn.status.label
     }
@@ -82,7 +79,7 @@ struct SlotRowView: View {
     }
 
     private var activateColor: Color {
-        if isTransitioning        { return .secondary }
+        if isTransitioning         { return .secondary }
         if conn.status == .missing { return .green }
         return .red
     }

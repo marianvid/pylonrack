@@ -4,6 +4,7 @@ import Foundation
 final class RackController: ObservableObject {
     @Published var slots:          [Slot] = []
     @Published var selectedSlotId: UUID?
+    @Published var rackLog:        [RackLogEntry] = []
 
     var rackSummary: String {
         let total    = slots.count
@@ -58,6 +59,7 @@ final class RackController: ObservableObject {
         if let c = config { configs[s.id] = c }
         slots.append(s)
         makeConnection(for: s).deactivate()
+        if slots.count == 1 { selectedSlotId = s.id }
         saveSlots()
     }
 
@@ -92,7 +94,9 @@ final class RackController: ObservableObject {
     func activate(_ slot: Slot) {
         guard let idx = slots.firstIndex(where: { $0.id == slot.id }) else { return }
         slots[idx].isActive = true
+        selectedSlotId = slot.id   // auto-select on activate
         saveSlots()
+        log("Activating \(slot.name)")
         let conn = connections[slot.id] ?? makeConnection(for: slots[idx])
         if slots[idx].isLocal { launchProcess(for: slots[idx], conn: conn) }
         else                  { conn.activate() }
@@ -138,6 +142,7 @@ final class RackController: ObservableObject {
     @discardableResult
     private func makeConnection(for slot: Slot) -> SlotConnection {
         let conn = SlotConnection(slot: slot, settings: settingsStore.current)
+        conn.onRackLog = { [weak self] message in self?.log(message) }
         connections[slot.id] = conn
         return conn
     }
@@ -152,6 +157,7 @@ final class RackController: ObservableObject {
         guard let config = configs[slot.id] else {
             conn.status        = .error
             conn.statusMessage = "rack.json not found"
+            log("[\(slot.name)] Error: rack.json not found")
             return
         }
 
@@ -164,7 +170,8 @@ final class RackController: ObservableObject {
             guard let self, let conn else { return }
             if conn.status == .connected || conn.status == .warning {
                 conn.status        = .error
-                conn.statusMessage = "Process exited"
+                conn.statusMessage = "Process exited unexpectedly"
+                self.log("[\(slot.name)] Process exited unexpectedly")
             }
             self.processes.removeValue(forKey: slot.id)
         }
@@ -172,6 +179,7 @@ final class RackController: ObservableObject {
 
         do {
             try proc.launch(command: config.start, workingDir: path, port: port)
+            log("[\(slot.name)] Launched on port \(port)")
             let delay = UInt64(config.startupDelay ?? 0) * 1_000_000_000
             if delay > 0 {
                 Task {
@@ -184,6 +192,7 @@ final class RackController: ObservableObject {
         } catch {
             conn.status        = .error
             conn.statusMessage = "Launch failed: \(error.localizedDescription)"
+            log("[\(slot.name)] Launch failed: \(error.localizedDescription)")
         }
     }
 
@@ -202,5 +211,13 @@ final class RackController: ObservableObject {
 
     private func saveSlots() {
         try? JSONEncoder().encode(slots).write(to: slotsURL)
+    }
+
+    // MARK: - Rack Log
+
+    func log(_ message: String) {
+        let entry = RackLogEntry(message: message)
+        rackLog.append(entry)
+        if rackLog.count > 500 { rackLog.removeFirst(rackLog.count - 500) }
     }
 }

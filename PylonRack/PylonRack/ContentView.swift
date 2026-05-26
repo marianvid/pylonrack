@@ -2,7 +2,7 @@ import SwiftUI
 
 struct ContentView: View {
     @EnvironmentObject var rack: RackController
-    @State private var showAddSlot    = false
+    @State private var showAddSlot     = false
     @State private var showRemoveAlert = false
 
     private var selectedSlot: Slot? {
@@ -15,7 +15,6 @@ struct ContentView: View {
                 leftPanel
                 rightPanel
             }
-
             StatusBarView()
                 .environmentObject(rack)
         }
@@ -55,13 +54,6 @@ struct ContentView: View {
                 .disabled(rack.selectedSlotId == nil)
                 .help("Remove selected slot")
 
-                Button { refreshSelected() } label: {
-                    Image(systemName: "arrow.clockwise").font(.system(size: 12))
-                }
-                .buttonStyle(RackIconButtonStyle())
-                .disabled(rack.selectedSlotId == nil)
-                .help("Reconnect selected slot")
-
                 Spacer()
             }
             .padding(.horizontal, 8)
@@ -73,6 +65,8 @@ struct ContentView: View {
                 if let conn = rack.connection(for: slot) {
                     SlotRowView(slot: slot, conn: conn) {
                         rack.toggleActive(slot)
+                    } onReconnect: {
+                        rack.reconnect(slot)
                     }
                     .tag(slot.id)
                 }
@@ -112,11 +106,6 @@ struct ContentView: View {
         guard let slot = selectedSlot else { return }
         rack.removeSlot(slot)
     }
-
-    private func refreshSelected() {
-        guard let slot = selectedSlot else { return }
-        rack.reconnect(slot)
-    }
 }
 
 // MARK: - Slot detail
@@ -127,7 +116,7 @@ struct SlotDetailView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Top bar — name + status + log toggle
+            // Top bar
             HStack(spacing: 8) {
                 Circle()
                     .fill(topBarColor)
@@ -145,16 +134,18 @@ struct SlotDetailView: View {
 
                 Spacer()
 
-                // Log toggle
-                Button {
-                    conn.showLog.toggle()
-                    if conn.showLog { conn.requestLog() }
-                } label: {
-                    Image(systemName: conn.showLog ? "doc.text.fill" : "doc.text")
-                        .font(.system(size: 12))
+                // Log toggle — only when connected and has UI
+                if conn.manifest?.uiURL != nil {
+                    Button {
+                        conn.showLog.toggle()
+                        if conn.showLog { conn.requestLog() }
+                    } label: {
+                        Image(systemName: conn.showLog ? "doc.text.fill" : "doc.text")
+                            .font(.system(size: 12))
+                    }
+                    .buttonStyle(RackIconButtonStyle())
+                    .help(conn.showLog ? "Show UI" : "Show log")
                 }
-                .buttonStyle(RackIconButtonStyle())
-                .help(conn.showLog ? "Hide log" : "Show log")
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 10)
@@ -162,15 +153,11 @@ struct SlotDetailView: View {
 
             Divider()
 
-            // Controls header (only when manifest has controls)
+            // Controls header
             SlotControlsView(slot: slot, conn: conn)
 
-            // Content
-            if conn.showLog {
-                LogView(conn: conn)
-            } else {
-                mainContent
-            }
+            // Body
+            bodyContent
         }
     }
 
@@ -187,49 +174,91 @@ struct SlotDetailView: View {
     }
 
     @ViewBuilder
-    private var mainContent: some View {
-        if let uiURL = conn.manifest?.uiURL, let url = URL(string: uiURL) {
-            WebViewPanel(url: url)
-        } else {
-            statusContent
-        }
-    }
+    private var bodyContent: some View {
+        switch conn.status {
+        case .error:
+            // Error — show status message prominently
+            errorContent
 
-    private var statusContent: some View {
-        VStack(spacing: 8) {
-            if !slot.isActive && conn.status == .missing {
-                Image(systemName: "pause.circle")
-                    .font(.system(size: 36)).foregroundStyle(.quaternary)
-                Text("Slot inactive")
-                    .font(.title3).foregroundStyle(.secondary)
-                Text("Press \u{25B6} in the list to activate.")
-                    .font(.caption).foregroundStyle(.tertiary)
-            } else if conn.status == .connecting || (slot.isActive && conn.status == .missing) {
+        case .connecting, .disconnecting:
+            // Transitioning — show spinner + message
+            VStack(spacing: 8) {
                 ProgressView()
-                Text("Connecting\u{2026}")
-                    .font(.title3).foregroundStyle(.secondary)
-            } else if conn.status == .disconnecting {
-                ProgressView()
-                Text("Disconnecting\u{2026}")
-                    .font(.title3).foregroundStyle(.secondary)
-            } else if conn.manifest != nil {
-                Image(systemName: "checkmark.circle")
-                    .font(.system(size: 36)).foregroundStyle(.green)
-                Text("Connected")
-                    .font(.title3).foregroundStyle(.secondary)
-                if !conn.appMessage.isEmpty {
-                    Text(conn.appMessage)
-                        .font(.caption).foregroundStyle(.tertiary)
-                }
-            } else {
-                Image(systemName: "exclamationmark.triangle")
-                    .font(.system(size: 36)).foregroundStyle(.orange)
-                Text(conn.status.label)
+                Text(topBarLabel)
                     .font(.title3).foregroundStyle(.secondary)
                 if !conn.statusMessage.isEmpty {
                     Text(conn.statusMessage)
                         .font(.caption).foregroundStyle(.tertiary)
                 }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+        case .missing:
+            if slot.isActive {
+                // Active but missing = still trying
+                VStack(spacing: 8) {
+                    ProgressView()
+                    Text("Connecting…")
+                        .font(.title3).foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                inactiveContent
+            }
+
+        default:
+            // Connected or warning
+            if conn.showLog {
+                LogView(conn: conn)
+            } else if let uiURL = conn.manifest?.uiURL, let url = URL(string: uiURL) {
+                WebViewPanel(url: url)
+            } else {
+                connectedPlaceholder
+            }
+        }
+    }
+
+    private var errorContent: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 36))
+                .foregroundStyle(.red)
+            Text("Connection failed")
+                .font(.title3).foregroundStyle(.primary)
+            if !conn.statusMessage.isEmpty {
+                Text(conn.statusMessage)
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 32)
+            }
+            Text("Check the Rack Log for details.")
+                .font(.caption).foregroundStyle(.tertiary)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var inactiveContent: some View {
+        VStack(spacing: 8) {
+            Image(systemName: "pause.circle")
+                .font(.system(size: 36)).foregroundStyle(.quaternary)
+            Text("Slot inactive")
+                .font(.title3).foregroundStyle(.secondary)
+            Text("Press ▶ in the list to activate.")
+                .font(.caption).foregroundStyle(.tertiary)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var connectedPlaceholder: some View {
+        VStack(spacing: 8) {
+            Image(systemName: "checkmark.circle")
+                .font(.system(size: 36)).foregroundStyle(.green)
+            Text("Connected")
+                .font(.title3).foregroundStyle(.secondary)
+            if !conn.appMessage.isEmpty {
+                Text(conn.appMessage)
+                    .font(.caption).foregroundStyle(.tertiary)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
