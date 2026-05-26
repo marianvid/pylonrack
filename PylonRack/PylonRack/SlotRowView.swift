@@ -29,14 +29,14 @@ struct SlotRowView: View {
 
                 Spacer()
 
-                // Reconnect — only when active and in error/warning
-                if slot.isActive && (conn.status == .error || conn.status == .warning) {
+                // Refresh — visible when active and not transitioning
+                if slot.isActive && !isTransitioning {
                     Button { onReconnect() } label: {
                         Image(systemName: "arrow.clockwise")
                             .font(.system(size: 11))
                     }
                     .buttonStyle(RackIconButtonStyle())
-                    .help("Reconnect")
+                    .help(conn.status == .error ? "Restart" : "Reconnect")
                 }
 
                 // Activate / Deactivate

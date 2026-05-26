@@ -3,20 +3,34 @@ import SwiftUI
 struct SlotControlsView: View {
     let slot: Slot
     @ObservedObject var conn: SlotConnection
+    var showLog:     Bool
+    var onToggleLog: () -> Void
 
     var body: some View {
-        if conn.controls.isEmpty { EmptyView() } else {
-            VStack(spacing: 0) {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        ForEach(conn.controls) { ctrl in
-                            controlView(ctrl)
-                        }
+        if conn.controls.isEmpty && conn.manifest?.uiURL == nil { EmptyView() } else {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(conn.controls) { ctrl in
+                        controlView(ctrl)
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 8)
+
+                    // Log toggle — only when ui_url exists
+                    if conn.manifest?.uiURL != nil {
+                        Divider().frame(height: 16)
+                        Button {
+                            onToggleLog()
+                        } label: {
+                            Image(systemName: showLog ? "doc.text.fill" : "doc.text")
+                                .font(.system(size: 12))
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                        .tint(showLog ? .accentColor : nil)
+                        .help(showLog ? "Show UI" : "Show log")
+                    }
                 }
-                Divider()
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
             }
             .background(.bar)
         }
