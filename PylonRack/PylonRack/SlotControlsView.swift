@@ -1,5 +1,50 @@
 import SwiftUI
 
+// MARK: - Control button style with hover + press feedback
+
+struct ControlButtonStyle: ButtonStyle {
+    let color: Color
+    @State private var isHovered = false
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.system(size: 12, weight: .medium))
+            .padding(.horizontal, 10)
+            .padding(.vertical, 5)
+            .background(background(configuration))
+            .foregroundStyle(foreground(configuration))
+            .clipShape(RoundedRectangle(cornerRadius: 6))
+            .overlay(
+                RoundedRectangle(cornerRadius: 6)
+                    .strokeBorder(border(configuration), lineWidth: 1)
+            )
+            .scaleEffect(configuration.isPressed ? 0.96 : 1.0)
+            .animation(.easeOut(duration: 0.1), value: configuration.isPressed)
+            .animation(.easeOut(duration: 0.15), value: isHovered)
+            .onHover { isHovered = $0 }
+    }
+
+    private func background(_ c: Configuration) -> Color {
+        if c.isPressed { return color.opacity(0.35) }
+        if isHovered   { return color.opacity(0.18) }
+        return color.opacity(0.08)
+    }
+
+    private func foreground(_ c: Configuration) -> Color {
+        if c.isPressed { return color }
+        if isHovered   { return color }
+        return color.opacity(0.85)
+    }
+
+    private func border(_ c: Configuration) -> Color {
+        if c.isPressed { return color.opacity(0.6) }
+        if isHovered   { return color.opacity(0.5) }
+        return color.opacity(0.25)
+    }
+}
+
+// MARK: - SlotControlsView
+
 struct SlotControlsView: View {
     let slot: Slot
     @ObservedObject var conn: SlotConnection
@@ -15,16 +60,7 @@ struct SlotControlsView: View {
 
                 if conn.manifest?.uiURL != nil {
                     Divider().frame(height: 16)
-                    Button {
-                        onToggleLog()
-                    } label: {
-                        Image(systemName: showLog ? "doc.text.fill" : "doc.text")
-                            .font(.system(size: 12))
-                    }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
-                    .tint(showLog ? .accentColor : nil)
-                    .help(showLog ? "Show UI" : "Show log")
+                    logToggleButton
                 }
 
                 Spacer()
@@ -34,6 +70,18 @@ struct SlotControlsView: View {
             .background(.bar)
         }
     }
+
+    // MARK: - Log toggle
+
+    private var logToggleButton: some View {
+        Button { onToggleLog() } label: {
+            Image(systemName: showLog ? "doc.text.fill" : "doc.text")
+        }
+        .buttonStyle(ControlButtonStyle(color: showLog ? .accentColor : Color(nsColor: .secondaryLabelColor)))
+        .help(showLog ? "Show UI" : "Show log")
+    }
+
+    // MARK: - Control routing
 
     @ViewBuilder
     private func controlView(_ ctrl: SlotControl) -> some View {
@@ -47,34 +95,24 @@ struct SlotControlsView: View {
     // MARK: - Button
 
     private func buttonView(_ ctrl: SlotControl) -> some View {
-        Button {
-            conn.sendAction(ctrl.id)
-        } label: {
-            HStack(spacing: 4) {
+        Button { conn.sendAction(ctrl.id) } label: {
+            HStack(spacing: 5) {
                 Text(ctrl.label ?? ctrl.id)
-                    .font(.system(size: 12, weight: .medium))
                 if ctrl.badge == true {
-                    Circle()
-                        .fill(.orange)
-                        .frame(width: 6, height: 6)
+                    Circle().fill(.orange).frame(width: 6, height: 6)
                 }
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 4)
         }
-        .buttonStyle(.bordered)
-        .tint(buttonTint(ctrl.style ?? .secondary))
-        .controlSize(.small)
+        .buttonStyle(ControlButtonStyle(color: buttonColor(ctrl.style ?? .secondary)))
     }
 
-    private func buttonTint(_ style: ControlStyle) -> Color {
+    private func buttonColor(_ style: ControlStyle) -> Color {
         switch style {
-        case .primary:     return .accentColor
-        case .destructive: return .red
-        case .warning:     return .orange
-        case .success:     return .green
-        case .error:       return .red
-        default:           return Color(nsColor: .controlColor)
+        case .primary:               return .accentColor
+        case .destructive, .error:   return .red
+        case .warning:               return .orange
+        case .success:               return .green
+        default:                     return Color(nsColor: .secondaryLabelColor)
         }
     }
 
@@ -91,9 +129,7 @@ struct SlotControlsView: View {
             if items.isEmpty {
                 Text("Loading…").tag("").foregroundStyle(.secondary)
             } else {
-                ForEach(items, id: \.self) { item in
-                    Text(item).tag(item)
-                }
+                ForEach(items, id: \.self) { Text($0).tag($0) }
             }
         }
         .pickerStyle(.menu)
@@ -106,34 +142,27 @@ struct SlotControlsView: View {
     // MARK: - Label
 
     private func labelView(_ ctrl: SlotControl) -> some View {
-        Text(ctrl.value ?? ctrl.label ?? "")
-            .font(.system(size: 12))
-            .foregroundStyle(labelColor(ctrl.style ?? .default))
-            .padding(.horizontal, 6)
-            .padding(.vertical, 3)
-            .background(
-                RoundedRectangle(cornerRadius: 4)
-                    .fill(labelBackground(ctrl.style ?? .default))
+        let style = ctrl.style ?? .default
+        return Text(ctrl.value ?? ctrl.label ?? "")
+            .font(.system(size: 12, weight: .medium))
+            .foregroundStyle(labelColor(style))
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(labelColor(style).opacity(0.1))
+            .clipShape(RoundedRectangle(cornerRadius: 5))
+            .overlay(
+                RoundedRectangle(cornerRadius: 5)
+                    .strokeBorder(labelColor(style).opacity(0.25), lineWidth: 1)
             )
     }
 
     private func labelColor(_ style: ControlStyle) -> Color {
         switch style {
-        case .success:     return .green
-        case .warning:     return .orange
-        case .error:       return .red
-        case .primary:     return .accentColor
-        default:           return Color(nsColor: .secondaryLabelColor)
-        }
-    }
-
-    private func labelBackground(_ style: ControlStyle) -> Color {
-        switch style {
-        case .success:     return .green.opacity(0.1)
-        case .warning:     return .orange.opacity(0.1)
-        case .error:       return .red.opacity(0.1)
-        case .primary:     return Color.accentColor.opacity(0.1)
-        default:           return Color(nsColor: .windowBackgroundColor).opacity(0.5)
+        case .success:  return .green
+        case .warning:  return .orange
+        case .error:    return .red
+        case .primary:  return .accentColor
+        default:        return Color(nsColor: .secondaryLabelColor)
         }
     }
 }
