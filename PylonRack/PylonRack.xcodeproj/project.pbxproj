@@ -38,6 +38,7 @@
 		BB0005 = {isa = PBXBuildFile; fileRef = BB1005; };
 		BB0006 = {isa = PBXBuildFile; fileRef = BB1006; };
 		BB0007 = {isa = PBXBuildFile; fileRef = BB1007; };
+		BB0008 = {isa = PBXBuildFile; fileRef = BB1008; };
 		BB0010 = {isa = PBXBuildFile; fileRef = BB1010; };
 		BS0001 = {isa = PBXBuildFile; fileRef = AA1006; };
 		BS0002 = {isa = PBXBuildFile; fileRef = AA1007; };
@@ -98,6 +99,7 @@
 		BB1005 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IncomingMessageTests.swift; sourceTree = "<group>"; };
 		BB1006 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SlotConnectionTests.swift; sourceTree = "<group>"; };
 		BB1007 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RackControllerTests.swift; sourceTree = "<group>"; };
+		BB1008 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SlotProcessTests.swift; sourceTree = "<group>"; };
 		BB1010 = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Network.framework; path = System/Library/Frameworks/Network.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
@@ -121,7 +123,7 @@
 		};
 		TEST_GRP = {
 			isa = PBXGroup;
-			children = (BB1001, BB1002, BB1003, BB1004, BB1005, BB1006, BB1007,);
+			children = (BB1001, BB1002, BB1003, BB1004, BB1005, BB1006, BB1007, BB1008,);
 			path = PylonRackTests;
 			sourceTree = "<group>";
 		};
@@ -192,7 +194,7 @@
 
 /* Begin PBXSourcesBuildPhase section */
 		AA_SRC = { isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (AA0001, AA0002, AA0003, AA0004, AA0005, AA0006, AA0007, AA0008, AA0009, AA0010, AA0011, AA0012, AA0013, AA0014, AA0015, AA0016, AA0017, AA0018, AA0019, AA0020, AA0021, AA0022, AA0023,); runOnlyForDeploymentPostprocessing = 0; };
-		BB_SRC = { isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (BB0001, BB0002, BB0003, BB0004, BB0005, BB0006, BB0007, BS0001, BS0002, BS0003, BS0004, BS0005, BS0006, BS0007, BS0008, BS0009, BS0010, BS0011, BS0012,); runOnlyForDeploymentPostprocessing = 0; };
+		BB_SRC = { isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (BB0001, BB0002, BB0003, BB0004, BB0005, BB0006, BB0007, BB0008, BS0001, BS0002, BS0003, BS0004, BS0005, BS0006, BS0007, BS0008, BS0009, BS0010, BS0011, BS0012,); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXSourcesBuildPhase section */
 
 /* Begin XCBuildConfiguration section */

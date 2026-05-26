@@ -53,6 +53,7 @@ final class SlotProcess {
     }
 
     var isRunning: Bool { process?.isRunning ?? false }
+    var pid: pid_t    { process?.processIdentifier ?? 0 }
 
     func sendSIGTERM() {
         guard let proc = process else { return }
