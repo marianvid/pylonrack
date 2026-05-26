@@ -199,17 +199,17 @@ A slot application is any service that implements the PylonRack WebSocket protoc
 - **Protocol:** WebSocket (RFC 6455)
 - **Format:** JSON, UTF-8
 - **Address:** `ws://<host>:<port>` — for local apps, host is always `localhost`
-- **Port:** For local apps, read from the `PARALLAX_PORT` environment variable (set by the rack at launch). Fall back to your preferred port if the variable is not set.
+- **Port:** For local apps, read from the `PYLON_PORT` environment variable (set by the rack at launch). Fall back to your preferred port if the variable is not set.
 
 ```python
 # Python example
 import os
-port = int(os.environ.get("PARALLAX_PORT", 9001))
+port = int(os.environ.get("PYLON_PORT", 9001))
 ```
 
 ```javascript
 // Node.js example
-const port = parseInt(process.env.PARALLAX_PORT) || 9001
+const port = parseInt(process.env.PYLON_PORT) || 9001
 ```
 
 ---
@@ -247,7 +247,7 @@ A local application must have a `rack.json` file in its root folder.
 | `controls` | ❌ | Native controls rendered in the rack header (see Controls section) |
 | `startup_delay` | ❌ | Seconds to wait after launch before connecting (default: 0) |
 
-**Important:** The rack sets the `PARALLAX_PORT` environment variable before launching the process. Always read this variable.
+**Important:** The rack sets the `PYLON_PORT` environment variable before launching the process. Always read this variable.
 
 ---
 
@@ -287,11 +287,11 @@ Rack                              App
 
 ### Port Binding
 
-Always read `PARALLAX_PORT`:
+Always read `PYLON_PORT`:
 
 ```python
 import os
-port = int(os.environ.get("PARALLAX_PORT", 9001))
+port = int(os.environ.get("PYLON_PORT", 9001))
 ```
 
 ---
@@ -487,7 +487,7 @@ import asyncio, json, os, sys
 from logging.handlers import RotatingFileHandler
 import logging, websockets
 
-WS_PORT  = int(os.environ.get("PARALLAX_PORT", 9001))
+WS_PORT  = int(os.environ.get("PYLON_PORT", 9001))
 LOG_FILE = os.path.join(os.path.dirname(__file__), "app.log")
 
 logger = logging.getLogger("myapp")
@@ -565,7 +565,7 @@ asyncio.run(main())
 ## Checklist
 
 - [ ] `rack.json` with `name`, `start`, `port`
-- [ ] Read port from `PARALLAX_PORT` environment variable
+- [ ] Read port from `PYLON_PORT` environment variable
 - [ ] Respond to `manifest` (first message on every connection)
 - [ ] Respond to `ping` with `pong`
 - [ ] Respond to `action` with `action_result`
