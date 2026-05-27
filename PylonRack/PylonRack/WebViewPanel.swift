@@ -2,45 +2,59 @@ import SwiftUI
 import WebKit
 
 struct WebViewPanel: NSViewRepresentable {
-    let url: URL
+    let url:         URL
+    var reloadToken: UUID = UUID()
 
     func makeNSView(context: Context) -> WKWebView {
         let config = WKWebViewConfiguration()
         config.preferences.setValue(true, forKey: "developerExtrasEnabled")
-        // Allow file:// and local content
         config.preferences.setValue(true, forKey: "allowFileAccessFromFileURLs")
         config.setValue(true, forKey: "allowUniversalAccessFromFileURLs")
 
         let webView = WKWebView(frame: .zero, configuration: config)
         webView.navigationDelegate = context.coordinator
-
-        if url.isFileURL {
-            webView.loadFileURL(url, allowingReadAccessTo: url.deletingLastPathComponent())
-        } else {
-            webView.load(URLRequest(url: url))
-        }
+        load(url: url, in: webView)
         return webView
     }
 
     func updateNSView(_ nsView: WKWebView, context: Context) {
-        guard nsView.url != url else { return }
-        if url.isFileURL {
-            nsView.loadFileURL(url, allowingReadAccessTo: url.deletingLastPathComponent())
-        } else {
-            nsView.load(URLRequest(url: url))
+        // Reload when url changes OR when reloadToken changes (explicit reload_ui signal)
+        if context.coordinator.lastURL != url || context.coordinator.lastToken != reloadToken {
+            context.coordinator.lastURL   = url
+            context.coordinator.lastToken = reloadToken
+            load(url: url, in: nsView)
         }
     }
 
-    func makeCoordinator() -> Coordinator { Coordinator() }
+    func makeCoordinator() -> Coordinator { Coordinator(url: url, token: reloadToken) }
+
+    private func load(url: URL, in webView: WKWebView) {
+        if url.isFileURL {
+            webView.loadFileURL(url, allowingReadAccessTo: url.deletingLastPathComponent())
+        } else {
+            var request = URLRequest(url: url)
+            request.cachePolicy = .reloadIgnoringLocalCacheData
+            webView.load(request)
+        }
+    }
 
     final class Coordinator: NSObject, WKNavigationDelegate {
-        func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
+        var lastURL:   URL
+        var lastToken: UUID
+
+        init(url: URL, token: UUID) {
+            lastURL   = url
+            lastToken = token
+        }
+
+        func webView(_ webView: WKWebView, didFailProvisionalNavigation _: WKNavigation!,
+                     withError error: Error) {
             NSLog("[WebViewPanel] Navigation error: %@", error.localizedDescription)
         }
-        func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
+        func webView(_ webView: WKWebView, didFail _: WKNavigation!, withError error: Error) {
             NSLog("[WebViewPanel] Load error: %@", error.localizedDescription)
         }
-        func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        func webView(_ webView: WKWebView, didFinish _: WKNavigation!) {
             NSLog("[WebViewPanel] Loaded: %@", webView.url?.absoluteString ?? "?")
         }
     }

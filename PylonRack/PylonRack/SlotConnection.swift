@@ -24,6 +24,7 @@ enum IncomingMessage {
     case logResponse(lines: [String], total: Int)
     case controlData(controlId: String, items: [String])
     case controlsUpdate(updates: [[String: Any]])
+    case reloadUI
     case actionResult   // acknowledged, no action needed
     case unknown
 
@@ -55,6 +56,8 @@ enum IncomingMessage {
             return .controlData(controlId: id, items: items)
         case "controls_update":
             return .controlsUpdate(updates: json["controls"] as? [[String: Any]] ?? [])
+        case "reload_ui":
+            return .reloadUI
         case "action_result":
             return .actionResult
         default:
@@ -78,6 +81,7 @@ final class SlotConnection: ObservableObject {
     @Published var logTotal:      Int           = 0
     @Published var processLog:    [String]      = []
     @Published var appMessage:    String        = ""
+    @Published var reloadUIToken: UUID          = UUID()  // changes → WebView reloads
 
     private(set) var isActive:        Bool = false
     private(set) var connectionCount: Int  = 0
@@ -242,6 +246,8 @@ final class SlotConnection: ObservableObject {
             }
         case .controlsUpdate(let updates):
             applyControlsUpdate(updates)
+        case .reloadUI:
+            reloadUIToken = UUID()
         case .actionResult, .unknown:
             break
         }
