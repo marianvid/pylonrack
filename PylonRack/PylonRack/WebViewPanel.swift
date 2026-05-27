@@ -32,15 +32,9 @@ struct WebViewPanel: NSViewRepresentable {
         if url.isFileURL {
             webView.loadFileURL(url, allowingReadAccessTo: url.deletingLastPathComponent())
         } else {
-            // Clear cache before reload to ensure fresh content (e.g. model name in UI)
-            WKWebsiteDataStore.default().removeData(
-                ofTypes: WKWebsiteDataStore.allWebsiteDataTypes(),
-                modifiedSince: Date(timeIntervalSince1970: 0)
-            ) {
-                var request = URLRequest(url: url)
-                request.cachePolicy = .reloadIgnoringLocalAndRemoteCacheData
-                webView.load(request)
-            }
+            var request = URLRequest(url: url)
+            request.cachePolicy = .reloadIgnoringLocalAndRemoteCacheData
+            webView.load(request)
         }
     }
 
