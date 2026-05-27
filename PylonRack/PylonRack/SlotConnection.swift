@@ -34,6 +34,7 @@ enum IncomingMessage {
     case controlData(controlId: String, items: [String])
     case controlsUpdate(updates: [[String: Any]])
     case reloadUI
+    case showLog     // server requests rack to switch to log panel
     case actionResult(data: [String: Any]?)
     case unknown
 
@@ -65,8 +66,8 @@ enum IncomingMessage {
             return .controlData(controlId: id, items: items)
         case "controls_update":
             return .controlsUpdate(updates: json["controls"] as? [[String: Any]] ?? [])
-        case "reload_ui":
-            return .reloadUI
+        case "reload_ui": return .reloadUI
+        case "show_log":  return .showLog
         case "action_result":
             return .actionResult(data: json["data"] as? [String: Any])
         default:
@@ -283,12 +284,14 @@ final class SlotConnection: ObservableObject {
             applyControlsUpdate(updates)
         case .reloadUI:
             reloadUIToken = UUID()
-            if let uiURL = manifest?.uiURL, let url = URL(string: uiURL),
-               let wv = webView {
+            if let uiURL = manifest?.uiURL, let url = URL(string: uiURL), let wv = webView {
                 var req = URLRequest(url: url)
                 req.cachePolicy = .reloadIgnoringLocalAndRemoteCacheData
                 wv.load(req)
             }
+        case .showLog:
+            bodyMode = .log
+            requestLog()
         case .actionResult(let data):
             lastActionResult  = data
             actionResultToken = UUID()
