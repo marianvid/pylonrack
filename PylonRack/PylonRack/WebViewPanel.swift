@@ -1,23 +1,24 @@
 import SwiftUI
 import WebKit
 
-// WebViewPanel wraps a persistent WKWebView owned by SlotConnection.
-// The WKWebView is created once on manifest and survives log toggle, slot selection changes.
-// Reload is triggered by SlotConnection.dispatch(.reloadUI) directly on the WKWebView instance.
-
 struct WebViewPanel: NSViewRepresentable {
     let webView: WKWebView
 
-    func makeNSView(context: Context) -> WKWebView {
-        NSLog("[WebViewPanel] makeNSView called — url: %@", webView.url?.absoluteString ?? "loading")
-        return webView
+    func makeNSView(context: Context) -> NSView {
+        // Wrap WKWebView in a container NSView — container gets proper frame from SwiftUI
+        // WKWebView is autoresized to fill container, which triggers correct layout
+        let container = NSView()
+        container.autoresizesSubviews = true
+        webView.autoresizingMask      = [.width, .height]
+        webView.frame                 = container.bounds
+        container.addSubview(webView)
+        return container
     }
 
-    func updateNSView(_ nsView: WKWebView, context: Context) {
-        // Force layout pass — WKWebView with frame:.zero doesn't render until layout occurs
-        DispatchQueue.main.async {
-            nsView.needsLayout = true
-            nsView.layoutSubtreeIfNeeded()
+    func updateNSView(_ nsView: NSView, context: Context) {
+        // Ensure WKWebView fills container whenever layout changes
+        if let wv = nsView.subviews.first as? WKWebView {
+            wv.frame = nsView.bounds
         }
     }
 }
