@@ -110,10 +110,14 @@ struct ModelManagerView: View {
             if localModels.isEmpty {
                 emptyLocal
             } else {
-                List(localModels) { model in
-                    localModelRow(model)
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: 0) {
+                        ForEach(localModels) { model in
+                            localModelRow(model)
+                            Divider().padding(.leading, 10)
+                        }
+                    }
                 }
-                .listStyle(.inset)
             }
         }
         .alert("Delete Model", isPresented: $showDeleteAlert) {
@@ -222,24 +226,43 @@ struct ModelManagerView: View {
                         .font(.caption).foregroundStyle(.tertiary)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if isSearching {
+                VStack(spacing: 6) {
+                    ProgressView()
+                    Text("Searching…")
+                        .font(.caption).foregroundStyle(.tertiary)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                List(searchResults, selection: $selectedModel) { model in
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(model.displayName)
-                            .font(.system(size: 11, weight: .medium))
-                            .lineLimit(1)
-                        if let d = model.downloads {
-                            Text("↓ \(d.formatted())")
-                                .font(.system(size: 10))
-                                .foregroundStyle(.tertiary)
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: 0) {
+                        ForEach(searchResults) { model in
+                            HStack {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(model.displayName)
+                                        .font(.system(size: 11, weight: .medium))
+                                        .lineLimit(1)
+                                    if let d = model.downloads {
+                                        Text("↓ \(d.formatted())")
+                                            .font(.system(size: 10))
+                                            .foregroundStyle(.tertiary)
+                                    }
+                                }
+                                Spacer()
+                            }
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 5)
+                            .background(selectedModel?.id == model.id
+                                ? Color.accentColor.opacity(0.15)
+                                : Color.clear)
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                selectedModel = model
+                                loadFiles(for: model)
+                            }
+                            Divider().padding(.leading, 10)
                         }
                     }
-                    .padding(.vertical, 2)
-                    .tag(model as HFModel?)
-                }
-                .listStyle(.inset)
-                .onChange(of: selectedModel) { _, m in
-                    if let m { loadFiles(for: m) }
                 }
             }
         }
