@@ -180,8 +180,7 @@ struct SlotDetailView: View {
                       let url = URL(string: uiURL) {
                 // WebView only when fully connected (status=running from slot)
                 // warning = slot reachable but backend not running → show placeholder
-                WebViewPanel(url: url)
-                    .id(conn.reloadUIToken)
+                WebViewPanel(url: url, reloadToken: conn.reloadUIToken)
             } else {
                 connectedPlaceholder
             }

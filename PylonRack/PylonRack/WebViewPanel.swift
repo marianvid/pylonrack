@@ -2,7 +2,8 @@ import SwiftUI
 import WebKit
 
 struct WebViewPanel: NSViewRepresentable {
-    let url: URL
+    let url:         URL
+    var reloadToken: UUID
 
     func makeNSView(context: Context) -> WKWebView {
         let config = WKWebViewConfiguration()
@@ -19,17 +20,27 @@ struct WebViewPanel: NSViewRepresentable {
     }
 
     func updateNSView(_ nsView: WKWebView, context: Context) {
-        // Reload only if URL changed
-        if nsView.url?.absoluteString != url.absoluteString {
-            var request = URLRequest(url: url)
-            request.cachePolicy = .reloadIgnoringLocalAndRemoteCacheData
-            nsView.load(request)
-        }
+        // Reload only when reloadToken changes (explicit signal from slot app)
+        // NOT when toggling log/webview — preserve the existing session
+        guard context.coordinator.lastToken != reloadToken else { return }
+        context.coordinator.lastToken = reloadToken
+
+        var request = URLRequest(url: url)
+        request.cachePolicy = .reloadIgnoringLocalAndRemoteCacheData
+        nsView.load(request)
     }
 
-    func makeCoordinator() -> Coordinator { Coordinator() }
+    func makeCoordinator() -> Coordinator {
+        Coordinator(token: reloadToken)
+    }
 
     final class Coordinator: NSObject, WKNavigationDelegate {
+        var lastToken: UUID
+
+        init(token: UUID) {
+            self.lastToken = token
+        }
+
         func webView(_ webView: WKWebView, didFailProvisionalNavigation _: WKNavigation!,
                      withError error: Error) {
             NSLog("[WebViewPanel] Navigation error: %@", error.localizedDescription)
