@@ -2,7 +2,6 @@ import SwiftUI
 
 struct ContentView: View {
     @EnvironmentObject var rack: RackController
-    @State private var showAddSlot     = false
     @State private var showRemoveAlert = false
 
     private var selectedSlot: Slot? {
@@ -19,9 +18,6 @@ struct ContentView: View {
                 .environmentObject(rack)
         }
         .frame(minWidth: 800, minHeight: 500)
-        .sheet(isPresented: $showAddSlot) {
-            AddSlotView { slot, config in rack.addSlot(slot, config: config) }
-        }
         .alert("Remove Slot", isPresented: $showRemoveAlert) {
             Button("Cancel", role: .cancel) { }
             Button("Remove", role: .destructive) { removeSelected() }
@@ -41,7 +37,7 @@ struct ContentView: View {
                 .padding(.bottom, 8)
 
             HStack(spacing: 2) {
-                Button { showAddSlot = true } label: {
+                Button { addSlotDirect() } label: {
                     Image(systemName: "plus").font(.system(size: 12))
                 }
                 .buttonStyle(RackIconButtonStyle())
@@ -105,6 +101,26 @@ struct ContentView: View {
     }
 
     // MARK: - Actions
+
+    private func addSlotDirect() {
+        let panel    = NSOpenPanel()
+        let delegate = RackFolderDelegate()
+        panel.delegate                = delegate
+        panel.canChooseFiles          = false
+        panel.canChooseDirectories    = true
+        panel.allowsMultipleSelection = false
+        panel.directoryURL = URL(fileURLWithPath: SettingsStore().current.defaultLocation)
+        panel.prompt       = "Add Slot"
+        panel.message      = "Select a PylonRack slot folder (must contain rack.json)"
+
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        guard let config = LocalSlotConfig.load(from: url) else { return }
+        _ = delegate  // retain
+
+        let slot = Slot(name: config.name, host: "localhost",
+                        port: config.port, localPath: url.path)
+        rack.addSlot(slot, config: config)
+    }
 
     private func removeSelected() {
         guard let slot = selectedSlot else { return }
