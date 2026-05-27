@@ -239,7 +239,16 @@ final class SlotConnection: ObservableObject {
         case .manifest(let m):
             handleManifest(m)
         case .logResponse(let lines, let total):
-            logLines = lines; logTotal = total
+            if total == -1 {
+                // Streaming append — live push from slot app
+                logLines.append(contentsOf: lines)
+                let cap = settings.logLinesPerRequest * 20
+                if logLines.count > cap { logLines.removeFirst(logLines.count - cap) }
+            } else {
+                // Full fetch response
+                logLines = lines
+                logTotal = total
+            }
         case .controlData(let id, let items):
             if let idx = controls.firstIndex(where: { $0.id == id }) {
                 controls[idx].items = items

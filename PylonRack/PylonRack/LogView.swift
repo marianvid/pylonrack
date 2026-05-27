@@ -65,7 +65,9 @@ struct LogView: View {
                 }
             }
         }
-        .onAppear { conn.requestLog() }
+        .onAppear {
+            conn.requestLog()
+        }
     }
 
     private var displayLines: [String] {
