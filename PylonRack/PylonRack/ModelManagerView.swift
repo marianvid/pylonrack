@@ -87,7 +87,8 @@ struct ModelManagerView: View {
     private func tabButton(_ label: String, tab t: Tab, icon: String) -> some View {
         Button {
             tab = t
-            if t == .local { loadLocalModels() }
+            if t == .local  { loadLocalModels() }
+            if t == .browse && searchResults.isEmpty { searchHF() }
         } label: {
             HStack(spacing: 5) {
                 Image(systemName: icon).font(.system(size: 11))
@@ -191,7 +192,7 @@ struct ModelManagerView: View {
             Image(systemName: "magnifyingglass")
                 .foregroundStyle(.secondary)
                 .font(.system(size: 12))
-            TextField("Search models… (press Enter)", text: $searchQuery)
+            TextField("Filter models…", text: $searchQuery)
                 .textFieldStyle(.plain)
                 .font(.system(size: 12))
                 .onSubmit { searchHF() }
@@ -216,10 +217,9 @@ struct ModelManagerView: View {
         Group {
             if searchResults.isEmpty && !isSearching {
                 VStack(spacing: 6) {
-                    Text("Search HuggingFace")
+                    ProgressView()
+                    Text("Loading top models…")
                         .font(.caption).foregroundStyle(.tertiary)
-                    Text("e.g. llama, gemma, qwen")
-                        .font(.caption2).foregroundStyle(.quaternary)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
@@ -378,7 +378,6 @@ struct ModelManagerView: View {
     }
 
     private func searchHF() {
-        guard !searchQuery.trimmingCharacters(in: .whitespaces).isEmpty else { return }
         isSearching   = true
         searchResults = []
         selectedModel = nil
