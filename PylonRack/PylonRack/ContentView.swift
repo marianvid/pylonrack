@@ -175,11 +175,14 @@ struct SlotDetailView: View {
             // Connected or warning
             if conn.showLog {
                 LogView(conn: conn)
-            } else if let uiURL = conn.manifest?.uiURL, let url = URL(string: uiURL) {
+            } else if conn.status == .connected,
+                      let uiURL = conn.manifest?.uiURL,
+                      let url = URL(string: uiURL) {
+                // WebView only when fully connected (status=running from slot)
+                // warning = slot reachable but backend not running → show placeholder
                 WebViewPanel(url: url)
                     .id(conn.reloadUIToken)
             } else {
-                let _ = { NSLog("[PylonRack] No ui_url. manifest=%@", conn.manifest?.name ?? "nil") }()
                 connectedPlaceholder
             }
         }
