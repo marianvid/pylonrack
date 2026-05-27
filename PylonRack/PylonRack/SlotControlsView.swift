@@ -53,13 +53,18 @@ struct SlotControlsView: View {
     var body: some View {
         if conn.controls.isEmpty && conn.manifest?.uiURL == nil { EmptyView() } else {
             HStack(spacing: 8) {
-                ForEach(conn.controls) { ctrl in
+                // Left: model controls (all except update)
+                ForEach(conn.controls.filter { $0.id != "update" }) { ctrl in
                     controlView(ctrl)
                 }
 
                 Spacer()
 
-                // Mode toggle buttons — right-aligned
+                // Right: update button + mode toggles
+                if let update = conn.controls.first(where: { $0.id == "update" }) {
+                    controlView(update)
+                    Divider().frame(height: 16)
+                }
                 modeButtons
             }
             .padding(.horizontal, 16)
