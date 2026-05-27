@@ -172,11 +172,11 @@ struct SlotDetailView: View {
             }
 
         default:
-            if let wv = conn.webView {
+            if let wv = conn.webView, conn.status == .connected {
+                // WebView visible only when connected (llama running)
+                // ZStack keeps WKWebView in hierarchy during log toggle — prevents SPA reset
                 ZStack {
-                    // WebView always stays in hierarchy — removing it resets SPA state
                     WebViewPanel(webView: wv)
-                    // Log overlaid on top, WebView stays loaded underneath
                     if conn.showLog {
                         LogView(conn: conn)
                             .background(Color(nsColor: .textBackgroundColor))

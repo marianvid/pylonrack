@@ -129,6 +129,7 @@ final class SlotConnection: ObservableObject {
         tearDown()
         status        = .missing
         statusMessage = "Inactive"
+        webView       = nil   // reset only on explicit deactivate
     }
 
     func reconnect() {
@@ -210,7 +211,8 @@ final class SlotConnection: ObservableObject {
         connectionCount += 1
         processLog      = []
         controls        = []
-        webView         = nil   // reset — new WKWebView created on manifest
+        // webView intentionally NOT reset here — preserved across reconnects
+        // Reset only on deactivate() to prevent session loss
         send(["type": "manifest"])
     }
 
@@ -297,15 +299,21 @@ final class SlotConnection: ObservableObject {
         for ctrl in m.controls where ctrl.type == .dropdown {
             requestControlData(ctrl.id)
         }
-        // Create persistent WKWebView if ui_url present
-        if let uiURL = m.uiURL, let url = URL(string: uiURL), webView == nil {
-            let config = WKWebViewConfiguration()
-            config.preferences.setValue(true, forKey: "developerExtrasEnabled")
-            let wv = WKWebView(frame: .zero, configuration: config)
-            var req = URLRequest(url: url)
-            req.cachePolicy = .reloadIgnoringLocalAndRemoteCacheData
-            wv.load(req)
-            webView = wv
+        // Create persistent WKWebView if ui_url present — once per slot lifetime
+        if let uiURL = m.uiURL, let url = URL(string: uiURL) {
+            if webView == nil {
+                // First time — create WKWebView
+                let config = WKWebViewConfiguration()
+                config.preferences.setValue(true, forKey: "developerExtrasEnabled")
+                let wv = WKWebView(frame: .zero, configuration: config)
+                var req = URLRequest(url: url)
+                req.cachePolicy = .reloadIgnoringLocalAndRemoteCacheData
+                wv.load(req)
+                webView = wv
+                NSLog("[SlotConnection] Created WKWebView for %@", uiURL)
+            } else {
+                NSLog("[SlotConnection] Reusing existing WKWebView — session preserved")
+            }
         }
     }
 
