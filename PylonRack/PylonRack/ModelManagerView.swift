@@ -191,12 +191,19 @@ struct ModelManagerView: View {
             Image(systemName: "magnifyingglass")
                 .foregroundStyle(.secondary)
                 .font(.system(size: 12))
-            TextField("Search models…", text: $searchQuery)
+            TextField("Search models… (press Enter)", text: $searchQuery)
                 .textFieldStyle(.plain)
                 .font(.system(size: 12))
                 .onSubmit { searchHF() }
             if isSearching {
                 ProgressView().scaleEffect(0.6)
+            } else if !searchQuery.isEmpty {
+                Button { searchHF() } label: {
+                    Image(systemName: "arrow.right.circle.fill")
+                        .foregroundStyle(Color.accentColor)
+                        .font(.system(size: 14))
+                }
+                .buttonStyle(.plain)
             }
         }
         .padding(.horizontal, 8)
@@ -367,24 +374,6 @@ struct ModelManagerView: View {
     // MARK: - Actions
 
     private func loadLocalModels() {
-        guard let hfCache = conn.manifest?.controls.first(where: { $0.id == "model_select" }),
-              let _ = hfCache.items else {
-            // Request model list from slot app via controls
-            conn.requestControlData("model_select")
-            // Parse from conn.controls
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                self.parseLocalModels()
-            }
-            return
-        }
-        parseLocalModels()
-    }
-
-    private func parseLocalModels() {
-        guard let ctrl = conn.controls.first(where: { $0.id == "model_select" }),
-              let items = ctrl.items else { return }
-        // Reconstruct from items — we need full paths from server
-        // Request full model info via custom action
         conn.sendAction("list_local_models")
     }
 
