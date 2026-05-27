@@ -1,4 +1,5 @@
 import Foundation
+import WebKit
 
 // MARK: - WebSocket delegate bridge
 
@@ -82,6 +83,9 @@ final class SlotConnection: ObservableObject {
     @Published var processLog:    [String]      = []
     @Published var appMessage:    String        = ""
     @Published var reloadUIToken: UUID          = UUID()  // changes → WebView reloads
+    
+    // Persistent WKWebView — created once per connection, survives log toggle
+    private(set) var webView: WKWebView? = nil
 
     private(set) var isActive:        Bool = false
     private(set) var connectionCount: Int  = 0
@@ -206,6 +210,7 @@ final class SlotConnection: ObservableObject {
         connectionCount += 1
         processLog      = []
         controls        = []
+        webView         = nil   // reset — new WKWebView created on manifest
         send(["type": "manifest"])
     }
 
@@ -257,6 +262,12 @@ final class SlotConnection: ObservableObject {
             applyControlsUpdate(updates)
         case .reloadUI:
             reloadUIToken = UUID()
+            if let uiURL = manifest?.uiURL, let url = URL(string: uiURL),
+               let wv = webView {
+                var req = URLRequest(url: url)
+                req.cachePolicy = .reloadIgnoringLocalAndRemoteCacheData
+                wv.load(req)
+            }
         case .actionResult, .unknown:
             break
         }
@@ -285,6 +296,16 @@ final class SlotConnection: ObservableObject {
         startHeartbeat(interval: interval)
         for ctrl in m.controls where ctrl.type == .dropdown {
             requestControlData(ctrl.id)
+        }
+        // Create persistent WKWebView if ui_url present
+        if let uiURL = m.uiURL, let url = URL(string: uiURL), webView == nil {
+            let config = WKWebViewConfiguration()
+            config.preferences.setValue(true, forKey: "developerExtrasEnabled")
+            let wv = WKWebView(frame: .zero, configuration: config)
+            var req = URLRequest(url: url)
+            req.cachePolicy = .reloadIgnoringLocalAndRemoteCacheData
+            wv.load(req)
+            webView = wv
         }
     }
 
