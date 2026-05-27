@@ -172,12 +172,16 @@ struct SlotDetailView: View {
             }
 
         default:
-            // Connected or warning
-            if conn.showLog {
-                LogView(conn: conn)
-            } else if conn.status == .connected,
-                      let wv = conn.webView {
-                WebViewPanel(webView: wv)
+            if let wv = conn.webView {
+                ZStack {
+                    // WebView always stays in hierarchy — removing it resets SPA state
+                    WebViewPanel(webView: wv)
+                    // Log overlaid on top, WebView stays loaded underneath
+                    if conn.showLog {
+                        LogView(conn: conn)
+                            .background(Color(nsColor: .textBackgroundColor))
+                    }
+                }
             } else {
                 connectedPlaceholder
             }
