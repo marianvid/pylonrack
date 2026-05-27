@@ -2,51 +2,34 @@ import SwiftUI
 import WebKit
 
 struct WebViewPanel: NSViewRepresentable {
-    let url:         URL
-    var reloadToken: UUID = UUID()
+    let url: URL
 
     func makeNSView(context: Context) -> WKWebView {
         let config = WKWebViewConfiguration()
         config.preferences.setValue(true, forKey: "developerExtrasEnabled")
-        config.preferences.setValue(true, forKey: "allowFileAccessFromFileURLs")
-        config.setValue(true, forKey: "allowUniversalAccessFromFileURLs")
 
         let webView = WKWebView(frame: .zero, configuration: config)
         webView.navigationDelegate = context.coordinator
-        load(url: url, in: webView)
+
+        var request = URLRequest(url: url)
+        request.cachePolicy = .reloadIgnoringLocalAndRemoteCacheData
+        webView.load(request)
+
         return webView
     }
 
     func updateNSView(_ nsView: WKWebView, context: Context) {
-        // Reload when url changes OR when reloadToken changes (explicit reload_ui signal)
-        if context.coordinator.lastURL != url || context.coordinator.lastToken != reloadToken {
-            context.coordinator.lastURL   = url
-            context.coordinator.lastToken = reloadToken
-            load(url: url, in: nsView)
-        }
-    }
-
-    func makeCoordinator() -> Coordinator { Coordinator(url: url, token: reloadToken) }
-
-    private func load(url: URL, in webView: WKWebView) {
-        if url.isFileURL {
-            webView.loadFileURL(url, allowingReadAccessTo: url.deletingLastPathComponent())
-        } else {
+        // Reload only if URL changed
+        if nsView.url?.absoluteString != url.absoluteString {
             var request = URLRequest(url: url)
             request.cachePolicy = .reloadIgnoringLocalAndRemoteCacheData
-            webView.load(request)
+            nsView.load(request)
         }
     }
 
+    func makeCoordinator() -> Coordinator { Coordinator() }
+
     final class Coordinator: NSObject, WKNavigationDelegate {
-        var lastURL:   URL
-        var lastToken: UUID
-
-        init(url: URL, token: UUID) {
-            lastURL   = url
-            lastToken = token
-        }
-
         func webView(_ webView: WKWebView, didFailProvisionalNavigation _: WKNavigation!,
                      withError error: Error) {
             NSLog("[WebViewPanel] Navigation error: %@", error.localizedDescription)

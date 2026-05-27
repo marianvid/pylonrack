@@ -176,8 +176,8 @@ struct SlotDetailView: View {
             if conn.showLog {
                 LogView(conn: conn)
             } else if let uiURL = conn.manifest?.uiURL, let url = URL(string: uiURL) {
-                let _ = { NSLog("[PylonRack] Loading WebView: %@", uiURL) }()
-                WebViewPanel(url: url, reloadToken: conn.reloadUIToken)
+                WebViewPanel(url: url)
+                    .id(conn.reloadUIToken)
             } else {
                 let _ = { NSLog("[PylonRack] No ui_url. manifest=%@", conn.manifest?.name ?? "nil") }()
                 connectedPlaceholder
