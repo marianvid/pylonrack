@@ -14,6 +14,10 @@ struct WebViewPanel: NSViewRepresentable {
     }
 
     func updateNSView(_ nsView: WKWebView, context: Context) {
-        // Nothing — WKWebView is managed by SlotConnection
+        // Force layout pass — WKWebView with frame:.zero doesn't render until layout occurs
+        DispatchQueue.main.async {
+            nsView.needsLayout = true
+            nsView.layoutSubtreeIfNeeded()
+        }
     }
 }
