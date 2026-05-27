@@ -67,8 +67,7 @@ struct LogView: View {
         }
         .onAppear {
             conn.requestLog()
-        }
-    }
+        }    }
 
     private var displayLines: [String] {
         // Show WS log if connected and available, else show process stdout

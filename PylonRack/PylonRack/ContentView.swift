@@ -83,12 +83,9 @@ struct ContentView: View {
     private var rightPanel: some View {
         if let slot = selectedSlot, let conn = rack.connection(for: slot) {
             SlotDetailView(slot: slot, conn: conn,
-                           onReconnect: { rack.reconnect(slot) },
-                           onRestart:   { Task { await rack.restart(slot) } },
-                           onToggleLog: {
-                               conn.showLog.toggle()
-                               if conn.showLog { conn.requestLog() }
-                           })
+                           onReconnect:   { rack.reconnect(slot) },
+                           onRestart:     { Task { await rack.restart(slot) } },
+                           onToggleMode:  { conn.toggleMode($0) })
         } else {
             emptyState
         }
@@ -120,21 +117,16 @@ struct ContentView: View {
 struct SlotDetailView: View {
     let slot: Slot
     @ObservedObject var conn: SlotConnection
-    var onReconnect: () -> Void
-    var onRestart:   () -> Void
-    var onToggleLog: () -> Void
+    var onReconnect:  () -> Void
+    var onRestart:    () -> Void
+    var onToggleMode: (BodyMode) -> Void
 
     var body: some View {
         VStack(spacing: 0) {
-            // Controls bar — always at top, only when connected
             if conn.status == .connected || conn.status == .warning {
-                SlotControlsView(slot: slot, conn: conn,
-                                 showLog: conn.showLog,
-                                 onToggleLog: onToggleLog)
+                SlotControlsView(slot: slot, conn: conn, onToggleMode: onToggleMode)
                 Divider()
             }
-
-            // Body
             bodyContent
         }
     }
@@ -173,15 +165,20 @@ struct SlotDetailView: View {
 
         default:
             if let wv = conn.webView, conn.status == .connected {
-                // WebView visible only when connected (llama running)
-                // ZStack keeps WKWebView in hierarchy during log toggle — prevents SPA reset
                 ZStack {
                     WebViewPanel(webView: wv)
-                    if conn.showLog {
+                        .opacity(conn.bodyMode == .webview ? 1 : 0)
+                    if conn.bodyMode == .log {
                         LogView(conn: conn)
                             .background(Color(nsColor: .textBackgroundColor))
                     }
+                    if conn.bodyMode == .models {
+                        ModelManagerView(conn: conn)
+                            .background(Color(nsColor: .textBackgroundColor))
+                    }
                 }
+            } else if conn.bodyMode == .models {
+                ModelManagerView(conn: conn)
             } else {
                 connectedPlaceholder
             }

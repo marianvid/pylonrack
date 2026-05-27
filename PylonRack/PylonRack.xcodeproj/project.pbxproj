@@ -29,6 +29,7 @@
 		AA0021 = {isa = PBXBuildFile; fileRef = AA1021; };
 		AA0022 = {isa = PBXBuildFile; fileRef = AA1022; };
 		AA0023 = {isa = PBXBuildFile; fileRef = AA1023; };
+		AA0024 = {isa = PBXBuildFile; fileRef = AA1024; };
 		AA0030 = {isa = PBXBuildFile; fileRef = AA1030; };
 		AA0031 = {isa = PBXBuildFile; fileRef = AA1031; };
 		BB0001 = {isa = PBXBuildFile; fileRef = BB1001; };
@@ -89,6 +90,7 @@
 		AA1021 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebViewPanel.swift; sourceTree = "<group>"; };
 		AA1022 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RackLogEntry.swift; sourceTree = "<group>"; };
 		AA1023 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RackLogView.swift; sourceTree = "<group>"; };
+		AA1024 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelManagerView.swift; sourceTree = "<group>"; };
 		AA1030 = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		AA1031 = {isa = PBXFileReference; lastKnownFileType = image.icns; path = PylonRack.icns; sourceTree = "<group>"; };
 		BB0099 = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PylonRackTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -117,7 +119,7 @@
 		PROD_GRP = { isa = PBXGroup; children = (AA0099, BB0099,); name = Products; sourceTree = "<group>"; };
 		APP_GRP = {
 			isa = PBXGroup;
-			children = (AA1001, AA1002, AA1003, AA1004, AA1005, AA1006, AA1007, AA1008, AA1009, AA1010, AA1011, AA1012, AA1013, AA1014, AA1015, AA1016, AA1017, AA1018, AA1019, AA1020, AA1021, AA1022, AA1023, AA1030, AA1031,);
+			children = (AA1001, AA1002, AA1003, AA1004, AA1005, AA1006, AA1007, AA1008, AA1009, AA1010, AA1011, AA1012, AA1013, AA1014, AA1015, AA1016, AA1017, AA1018, AA1019, AA1020, AA1021, AA1022, AA1023, AA1024, AA1030, AA1031,);
 			path = PylonRack;
 			sourceTree = "<group>";
 		};
@@ -193,7 +195,7 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-		AA_SRC = { isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (AA0001, AA0002, AA0003, AA0004, AA0005, AA0006, AA0007, AA0008, AA0009, AA0010, AA0011, AA0012, AA0013, AA0014, AA0015, AA0016, AA0017, AA0018, AA0019, AA0020, AA0021, AA0022, AA0023,); runOnlyForDeploymentPostprocessing = 0; };
+		AA_SRC = { isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (AA0001, AA0002, AA0003, AA0004, AA0005, AA0006, AA0007, AA0008, AA0009, AA0010, AA0011, AA0012, AA0013, AA0014, AA0015, AA0016, AA0017, AA0018, AA0019, AA0020, AA0021, AA0022, AA0023, AA0024,); runOnlyForDeploymentPostprocessing = 0; };
 		BB_SRC = { isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (BB0001, BB0002, BB0003, BB0004, BB0005, BB0006, BB0007, BB0008, BS0001, BS0002, BS0003, BS0004, BS0005, BS0006, BS0007, BS0008, BS0009, BS0010, BS0011, BS0012,); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXSourcesBuildPhase section */
 

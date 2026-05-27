@@ -1,6 +1,14 @@
 import Foundation
 import WebKit
 
+// MARK: - Body display mode
+
+enum BodyMode: Equatable {
+    case webview
+    case log
+    case models
+}
+
 // MARK: - WebSocket delegate bridge
 
 private final class WSDelegate: NSObject, URLSessionWebSocketDelegate {
@@ -26,7 +34,7 @@ enum IncomingMessage {
     case controlData(controlId: String, items: [String])
     case controlsUpdate(updates: [[String: Any]])
     case reloadUI
-    case actionResult   // acknowledged, no action needed
+    case actionResult(data: [String: Any]?)
     case unknown
 
     static func decode(from raw: String) -> IncomingMessage {
@@ -60,7 +68,7 @@ enum IncomingMessage {
         case "reload_ui":
             return .reloadUI
         case "action_result":
-            return .actionResult
+            return .actionResult(data: json["data"] as? [String: Any])
         default:
             return .unknown
         }
@@ -77,12 +85,14 @@ final class SlotConnection: ObservableObject {
     @Published var statusMessage: String        = ""
     @Published var manifest:      SlotManifest?
     @Published var controls:      [SlotControl] = []
-    @Published var showLog:       Bool          = false
+    @Published var bodyMode:      BodyMode      = .webview
     @Published var logLines:      [String]      = []
     @Published var logTotal:      Int           = 0
     @Published var processLog:    [String]      = []
     @Published var appMessage:    String        = ""
-    @Published var reloadUIToken: UUID          = UUID()  // changes → WebView reloads
+    @Published var reloadUIToken:      UUID  = UUID()
+    @Published var actionResultToken:  UUID  = UUID()   // changes on each action_result
+    private(set) var lastActionResult: [String: Any]? = nil
     
     // Persistent WKWebView — created once per connection, survives log toggle
     private(set) var webView: WKWebView? = nil
@@ -160,6 +170,15 @@ final class SlotConnection: ObservableObject {
         send(["type": "log_request",
               "lines":  lines ?? settings.logLinesPerRequest,
               "offset": offset])
+    }
+
+    func toggleMode(_ mode: BodyMode) {
+        if bodyMode == mode {
+            bodyMode = .webview
+        } else {
+            bodyMode = mode
+            if mode == .log { requestLog() }
+        }
     }
 
     func appendProcessLog(_ text: String) {
@@ -270,7 +289,10 @@ final class SlotConnection: ObservableObject {
                 req.cachePolicy = .reloadIgnoringLocalAndRemoteCacheData
                 wv.load(req)
             }
-        case .actionResult, .unknown:
+        case .actionResult(let data):
+            lastActionResult  = data
+            actionResultToken = UUID()
+        case .unknown:
             break
         }
     }

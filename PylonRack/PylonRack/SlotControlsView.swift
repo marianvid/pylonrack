@@ -48,8 +48,7 @@ struct ControlButtonStyle: ButtonStyle {
 struct SlotControlsView: View {
     let slot: Slot
     @ObservedObject var conn: SlotConnection
-    var showLog:     Bool
-    var onToggleLog: () -> Void
+    var onToggleMode: (BodyMode) -> Void
 
     var body: some View {
         if conn.controls.isEmpty && conn.manifest?.uiURL == nil { EmptyView() } else {
@@ -58,12 +57,10 @@ struct SlotControlsView: View {
                     controlView(ctrl)
                 }
 
-                if conn.manifest?.uiURL != nil {
-                    Divider().frame(height: 16)
-                    logToggleButton
-                }
-
                 Spacer()
+
+                // Mode toggle buttons — right-aligned
+                modeButtons
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 8)
@@ -71,14 +68,25 @@ struct SlotControlsView: View {
         }
     }
 
-    // MARK: - Log toggle
+    // MARK: - Mode toggle buttons
 
-    private var logToggleButton: some View {
-        Button { onToggleLog() } label: {
-            Image(systemName: showLog ? "doc.text.fill" : "doc.text")
+    @ViewBuilder
+    private var modeButtons: some View {
+        HStack(spacing: 4) {
+            // Log toggle
+            ModeToggleButton(
+                icon:   "doc.text",
+                active: conn.bodyMode == .log,
+                help:   conn.bodyMode == .log ? "Show UI" : "Show log"
+            ) { onToggleMode(.log) }
+
+            // Models toggle
+            ModeToggleButton(
+                icon:   "square.grid.2x2",
+                active: conn.bodyMode == .models,
+                help:   conn.bodyMode == .models ? "Hide models" : "Manage models"
+            ) { onToggleMode(.models) }
         }
-        .buttonStyle(ControlButtonStyle(color: showLog ? .accentColor : Color(nsColor: .secondaryLabelColor)))
-        .help(showLog ? "Show UI" : "Show log")
     }
 
     // MARK: - Control routing
@@ -164,5 +172,34 @@ struct SlotControlsView: View {
         case .primary:  return .accentColor
         default:        return Color(nsColor: .secondaryLabelColor)
         }
+    }
+}
+
+// MARK: - ModeToggleButton
+
+struct ModeToggleButton: View {
+    let icon:   String
+    let active: Bool
+    let help:   String
+    let action: () -> Void
+
+    @State private var isHovered = false
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: active ? "\(icon).fill" : icon)
+                .font(.system(size: 12))
+                .foregroundStyle(active ? Color.accentColor : Color(nsColor: .secondaryLabelColor))
+                .padding(6)
+                .background(
+                    RoundedRectangle(cornerRadius: 5)
+                        .fill(active
+                              ? Color.accentColor.opacity(0.12)
+                              : (isHovered ? Color(nsColor: .secondaryLabelColor).opacity(0.1) : Color.clear))
+                )
+        }
+        .buttonStyle(.plain)
+        .onHover { isHovered = $0 }
+        .help(help)
     }
 }
