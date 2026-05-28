@@ -8,17 +8,31 @@ struct WebViewPanel: NSViewRepresentable {
         let container = NSView()
         container.autoresizesSubviews = true
         webView.autoresizingMask      = [.width, .height]
-        webView.frame                 = container.bounds
+        webView.navigationDelegate    = context.coordinator
         container.addSubview(webView)
         return container
     }
 
     func updateNSView(_ nsView: NSView, context: Context) {
-        guard let wv = nsView.subviews.first as? WKWebView else { return }
-        if wv.frame != nsView.bounds {
-            wv.frame = nsView.bounds
-            // Dispatch resize event so SPA (SvelteKit/React) recalculates layout
-            wv.evaluateJavaScript("window.dispatchEvent(new Event('resize'))", completionHandler: nil)
+        // Only update frame — no resize dispatch here (causes blank on re-render)
+        webView.frame = nsView.bounds
+    }
+
+    func makeCoordinator() -> Coordinator { Coordinator() }
+
+    final class Coordinator: NSObject, WKNavigationDelegate {
+        func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+            // Dispatch resize after page fully loaded — fixes SPA layout on first render
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                webView.evaluateJavaScript(
+                    "window.dispatchEvent(new Event('resize'))",
+                    completionHandler: nil
+                )
+            }
+        }
+        func webView(_ webView: WKWebView, didFailProvisionalNavigation _: WKNavigation!,
+                     withError error: Error) {
+            NSLog("[WebViewPanel] Navigation error: %@", error.localizedDescription)
         }
     }
 }
