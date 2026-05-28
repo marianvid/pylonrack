@@ -327,17 +327,13 @@ final class SlotConnection: ObservableObject {
         // Create persistent WKWebView if ui_url present — once per slot lifetime
         if let uiURL = m.uiURL, let url = URL(string: uiURL) {
             if webView == nil {
-                // First time — create WKWebView
                 let config = WKWebViewConfiguration()
                 config.preferences.setValue(true, forKey: "developerExtrasEnabled")
+                // Create WKWebView but do NOT load yet — loading happens in WebViewPanel
+                // after the view has a real frame from SwiftUI layout
                 let wv = WKWebView(frame: .zero, configuration: config)
-                var req = URLRequest(url: url)
-                req.cachePolicy = .reloadIgnoringLocalAndRemoteCacheData
-                wv.load(req)
                 webView = wv
                 NSLog("[SlotConnection] Created WKWebView for %@", uiURL)
-            } else {
-                NSLog("[SlotConnection] Reusing existing WKWebView — session preserved")
             }
         }
     }

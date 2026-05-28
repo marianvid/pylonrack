@@ -180,10 +180,10 @@ struct SlotDetailView: View {
             }
 
         default:
-            if let wv = conn.webView, conn.status == .connected {
+            if let wv = conn.webView, conn.status == .connected,
+               let uiURL = conn.manifest?.uiURL, let url = URL(string: uiURL) {
                 ZStack {
-                    WebViewPanel(webView: wv)
-                        .opacity(conn.bodyMode == .webview ? 1 : 0)
+                    WebViewPanel(webView: wv, url: url)
                     if conn.bodyMode == .log {
                         LogView(conn: conn)
                             .background(Color(nsColor: .textBackgroundColor))
