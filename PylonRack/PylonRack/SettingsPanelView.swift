@@ -22,6 +22,10 @@ struct SettingsPanelView: View {
     @State private var flashAttn: Bool = true
     @State private var mlock:     Bool = false
 
+    // Draft model
+    @State private var draftModelPath:       String = ""   // "" = disabled
+    @State private var draftModelCandidates: [(name: String, path: String, sizeGb: Double)] = []
+
     // UI state
     @State private var isSaving:    Bool   = false
     @State private var savedBanner: Bool   = false
@@ -72,6 +76,34 @@ struct SettingsPanelView: View {
                             .font(.system(size: 13))
                             .toggleStyle(.switch)
                             .controlSize(.small)
+                    }
+                    section("Speculative Decoding") {
+                        if draftModelCandidates.isEmpty {
+                            Text("No compatible draft models found. Download a smaller model with the same tokenizer as the current model.")
+                                .font(.system(size: 12))
+                                .foregroundStyle(.secondary)
+                        } else {
+                            HStack {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Draft model")
+                                        .font(.system(size: 13))
+                                    Text("same tokenizer, < 1/3 size")
+                                        .font(.system(size: 11))
+                                        .foregroundStyle(.tertiary)
+                                }
+                                Spacer()
+                                Picker("", selection: $draftModelPath) {
+                                    Text("Disabled").tag("")
+                                    ForEach(draftModelCandidates, id: \.path) { c in
+                                        Text("\(c.name) (\(String(format: "%.1f", c.sizeGb)) GB)").tag(c.path)
+                                    }
+                                }
+                                .pickerStyle(.menu)
+                                .controlSize(.small)
+                                .frame(width: 260)
+                                .labelsHidden()
+                            }
+                        }
                     }
                 }
                 .frame(width: 480, alignment: .leading)
@@ -190,6 +222,15 @@ struct SettingsPanelView: View {
                 flashAttn    = s["flash_attn"]  as? Bool ?? true
                 mlock        = s["mlock"]       as? Bool ?? false
             }
+            draftModelPath = data["draft_model"] as? String ?? ""
+            if let candidates = data["draft_model_candidates"] as? [[String: Any]] {
+                draftModelCandidates = candidates.compactMap { c in
+                    guard let name = c["display_name"] as? String,
+                          let path = c["full_path"]    as? String,
+                          let size = c["size_gb"]      as? Double else { return nil }
+                    return (name: name, path: path, sizeGb: size)
+                }
+            }
         case "settings_saved":
             isSaving = false
             // Close settings panel — return to webview
@@ -213,6 +254,7 @@ struct SettingsPanelView: View {
             "repeat_penalty": Double(repeatPenalty) ?? 1.1,
             "flash_attn":     flashAttn,
             "mlock":          mlock,
+            "draft_model":    draftModelPath,
         ]
         conn.sendActionWithSettings("save_settings", settings: settings)
     }
