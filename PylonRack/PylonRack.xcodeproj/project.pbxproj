@@ -20,7 +20,6 @@
 		AA0012 = {isa = PBXBuildFile; fileRef = AA1012; };
 		AA0013 = {isa = PBXBuildFile; fileRef = AA1013; };
 		AA0014 = {isa = PBXBuildFile; fileRef = AA1014; };
-		AA0015 = {isa = PBXBuildFile; fileRef = AA1015; };
 		AA0016 = {isa = PBXBuildFile; fileRef = AA1016; };
 		AA0017 = {isa = PBXBuildFile; fileRef = AA1017; };
 		AA0018 = {isa = PBXBuildFile; fileRef = AA1018; };
@@ -81,7 +80,6 @@
 		AA1012 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RackController.swift; sourceTree = "<group>"; };
 		AA1013 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RackFolderDelegate.swift; sourceTree = "<group>"; };
 		AA1014 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RackIconButtonStyle.swift; sourceTree = "<group>"; };
-		AA1015 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddSlotView.swift; sourceTree = "<group>"; };
 		AA1016 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalSlotConfig.swift; sourceTree = "<group>"; };
 		AA1017 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PortFinder.swift; sourceTree = "<group>"; };
 		AA1018 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogView.swift; sourceTree = "<group>"; };
@@ -119,7 +117,7 @@
 		PROD_GRP = { isa = PBXGroup; children = (AA0099, BB0099,); name = Products; sourceTree = "<group>"; };
 		APP_GRP = {
 			isa = PBXGroup;
-			children = (AA1001, AA1002, AA1003, AA1004, AA1005, AA1006, AA1007, AA1008, AA1009, AA1010, AA1011, AA1012, AA1013, AA1014, AA1015, AA1016, AA1017, AA1018, AA1019, AA1020, AA1021, AA1022, AA1023, AA1024, AA1030, AA1031,);
+			children = (AA1001, AA1002, AA1003, AA1004, AA1005, AA1006, AA1007, AA1008, AA1009, AA1010, AA1011, AA1012, AA1013, AA1014, AA1016, AA1017, AA1018, AA1019, AA1020, AA1021, AA1022, AA1023, AA1024, AA1030, AA1031,);
 			path = PylonRack;
 			sourceTree = "<group>";
 		};
@@ -195,7 +193,7 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-		AA_SRC = { isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (AA0001, AA0002, AA0003, AA0004, AA0005, AA0006, AA0007, AA0008, AA0009, AA0010, AA0011, AA0012, AA0013, AA0014, AA0015, AA0016, AA0017, AA0018, AA0019, AA0020, AA0021, AA0022, AA0023, AA0024,); runOnlyForDeploymentPostprocessing = 0; };
+		AA_SRC = { isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (AA0001, AA0002, AA0003, AA0004, AA0005, AA0006, AA0007, AA0008, AA0009, AA0010, AA0011, AA0012, AA0013, AA0014, AA0016, AA0017, AA0018, AA0019, AA0020, AA0021, AA0022, AA0023, AA0024,); runOnlyForDeploymentPostprocessing = 0; };
 		BB_SRC = { isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (BB0001, BB0002, BB0003, BB0004, BB0005, BB0006, BB0007, BB0008, BS0001, BS0002, BS0003, BS0004, BS0005, BS0006, BS0007, BS0008, BS0009, BS0010, BS0011, BS0012,); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXSourcesBuildPhase section */
 
