@@ -27,11 +27,12 @@ struct SettingsPanelView: View {
     @State private var savedBanner: Bool   = false
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 0) {
-                header
-
-                VStack(alignment: .leading, spacing: 24) {
+        VStack(spacing: 0) {
+            header
+            Divider()
+            HStack(alignment: .top, spacing: 0) {
+                // Left column — Model & Context
+                VStack(alignment: .leading, spacing: 16) {
                     section("Model & Context") {
                         row("Context size", hint: "tokens") {
                             IntField(value: $ctxSize, range: 512...2097152)
@@ -49,7 +50,14 @@ struct SettingsPanelView: View {
                             IntField(value: $uBatchSize, range: 32...4096)
                         }
                     }
+                }
+                .frame(maxWidth: .infinity)
+                .padding(20)
 
+                Divider()
+
+                // Right column — Sampling + Hardware
+                VStack(alignment: .leading, spacing: 16) {
                     section("Sampling") {
                         row("Temperature", hint: "0.0 – 2.0") {
                             FloatField(value: $temperature, range: 0.0...2.0)
@@ -64,7 +72,6 @@ struct SettingsPanelView: View {
                             FloatField(value: $repeatPenalty, range: 1.0...2.0)
                         }
                     }
-
                     section("Hardware") {
                         Toggle("Flash Attention", isOn: $flashAttn)
                             .font(.system(size: 13))
@@ -76,13 +83,13 @@ struct SettingsPanelView: View {
                             .controlSize(.small)
                     }
                 }
-                .padding(24)
-
-                Divider()
-
-                footer
-                    .padding(20)
+                .frame(maxWidth: .infinity)
+                .padding(20)
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+
+            Divider()
+            footer.padding(.horizontal, 20).padding(.vertical, 14)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .onAppear { loadFromConn() }
