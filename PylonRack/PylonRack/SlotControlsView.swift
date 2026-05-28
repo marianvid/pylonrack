@@ -78,18 +78,16 @@ struct SlotControlsView: View {
     @ViewBuilder
     private var modeButtons: some View {
         HStack(spacing: 4) {
-            // Log toggle
             ModeToggleButton(
                 icon:   "doc.text",
                 active: conn.bodyMode == .log,
-                help:   conn.bodyMode == .log ? "Show UI" : "Show log"
+                help:   conn.bodyMode == .log ? "Hide log" : "Show process log"
             ) { onToggleMode(.log) }
 
-            // Models toggle
             ModeToggleButton(
                 icon:   "square.grid.2x2",
                 active: conn.bodyMode == .models,
-                help:   conn.bodyMode == .models ? "Hide models" : "Manage models"
+                help:   conn.bodyMode == .models ? "Hide model manager" : "Download & manage models"
             ) { onToggleMode(.models) }
         }
     }
@@ -117,6 +115,22 @@ struct SlotControlsView: View {
             }
         }
         .buttonStyle(ControlButtonStyle(color: buttonColor(ctrl.style ?? .secondary)))
+        .help(buttonTooltip(ctrl))
+    }
+
+    private func buttonTooltip(_ ctrl: SlotControl) -> String {
+        switch ctrl.id {
+        case "toggle":
+            return (ctrl.label == "Stop" || ctrl.label == "Stopping…")
+                ? "Stop llama-server" : "Start llama-server"
+        case "update":
+            let badge = ctrl.badge == true
+            return badge
+                ? "Update available — click to pull & rebuild llama.cpp"
+                : "llama.cpp is up to date"
+        default:
+            return ctrl.label ?? ctrl.id
+        }
     }
 
     private func buttonColor(_ style: ControlStyle) -> Color {
@@ -149,7 +163,7 @@ struct SlotControlsView: View {
         .controlSize(.small)
         .frame(maxWidth: 240)
         .labelsHidden()
-        .help(ctrl.label ?? ctrl.id)
+        .help("Select model")
     }
 
     // MARK: - Label
