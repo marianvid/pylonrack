@@ -202,9 +202,14 @@ final class SlotConnection: ObservableObject {
         tearDown()
         isReconnecting = false
 
-        let del     = WSDelegate()
-        wsDelegate  = del
-        let session = URLSession(configuration: .default, delegate: del, delegateQueue: nil)
+        let del    = WSDelegate()
+        wsDelegate = del
+        // Infinite timeouts — WebSocket is long-lived; default 60s kills connection
+        // during cmake builds or any period where server sends nothing
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest  = .infinity
+        config.timeoutIntervalForResource = .infinity
+        let session = URLSession(configuration: config, delegate: del, delegateQueue: nil)
         urlSession  = session
         let task    = session.webSocketTask(with: url)
         wsTask      = task
@@ -237,6 +242,9 @@ final class SlotConnection: ObservableObject {
     }
 
     private func onDropped() async {
+        let msg = "[\(slot.name)] onDropped — updateInProgress=\(updateInProgress) bodyMode=\(bodyMode) missedBeats=\(missedBeats)"
+        NSLog("[SlotConnection] %@", msg)
+        onRackLog?(msg)
         heartbeatTimer?.invalidate(); heartbeatTimer = nil
         guard isActive else { return }
         scheduleReconnect()
@@ -250,7 +258,13 @@ final class SlotConnection: ObservableObject {
                     let msg = try await t.receive()
                     await self.dispatch(IncomingMessage.decode(from: rawString(msg)))
                 } catch {
-                    if !Task.isCancelled { await self.scheduleReconnect() }
+                    let updating = await self.updateInProgress
+                    let errMsg = "[\(await self.slot.name)] receiveLoop error: \(error.localizedDescription) — updateInProgress=\(updating)"
+                    NSLog("[SlotConnection] %@", errMsg)
+                    await self.onRackLog?(errMsg)
+                    if !Task.isCancelled && !updating {
+                        await self.scheduleReconnect()
+                    }
                     break
                 }
             }
