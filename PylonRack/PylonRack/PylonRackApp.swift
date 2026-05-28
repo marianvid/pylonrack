@@ -7,6 +7,9 @@ struct PylonRackApp: App {
     private let system: SystemEnvironment  = MacSystemEnvironment()
 
     init() {
+        // Reduce tooltip delay to 0.5s (default is ~2s)
+        UserDefaults.standard.set(0.5, forKey: "NSInitialToolTipDelay")
+        UserDefaults.standard.set(0.5, forKey: "NSToolTipDelay")
         // Apply persisted dock policy after MenuBarExtra sets .accessory.
         let showInDock = SettingsStore().current.showInDock
         if showInDock {
