@@ -171,6 +171,7 @@ struct ModelManagerView: View {
             .help("Delete model")
         }
         .padding(.vertical, 4)
+        .padding(.horizontal, 15)
     }
 
     // MARK: - Browse tab
