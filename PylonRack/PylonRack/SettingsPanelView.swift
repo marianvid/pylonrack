@@ -30,9 +30,8 @@ struct SettingsPanelView: View {
         VStack(spacing: 0) {
             header
             Divider()
-            HStack(alignment: .top, spacing: 0) {
-                // Left column — Model & Context
-                VStack(alignment: .leading, spacing: 16) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
                     section("Model & Context") {
                         row("Context size", hint: "tokens") {
                             IntField(value: $ctxSize, range: 512...2097152)
@@ -50,14 +49,6 @@ struct SettingsPanelView: View {
                             IntField(value: $uBatchSize, range: 32...4096)
                         }
                     }
-                }
-                .frame(maxWidth: .infinity)
-                .padding(20)
-
-                Divider()
-
-                // Right column — Sampling + Hardware
-                VStack(alignment: .leading, spacing: 16) {
                     section("Sampling") {
                         row("Temperature", hint: "0.0 – 2.0") {
                             FloatField(value: $temperature, range: 0.0...2.0)
@@ -83,13 +74,21 @@ struct SettingsPanelView: View {
                             .controlSize(.small)
                     }
                 }
-                .frame(maxWidth: .infinity)
-                .padding(20)
+                .frame(width: 480, alignment: .leading)
+                .padding(24)
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             Divider()
-            footer.padding(.horizontal, 20).padding(.vertical, 14)
+            HStack {
+                Text("Changes take effect after restart.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                footer
+            }
+            .frame(width: 480)
+            .padding(.horizontal, 24)
+            .padding(.vertical, 14)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .onAppear { loadFromConn() }
@@ -118,27 +117,21 @@ struct SettingsPanelView: View {
     }
 
     private var footer: some View {
-        HStack {
-            Text("Changes take effect after restart.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            Spacer()
-            Button {
-                saveSettings()
-            } label: {
-                HStack(spacing: 6) {
-                    if isSaving {
-                        ProgressView().controlSize(.mini)
-                        Text("Restarting…")
-                    } else {
-                        Text("Save & Restart")
-                    }
+        Button {
+            saveSettings()
+        } label: {
+            HStack(spacing: 6) {
+                if isSaving {
+                    ProgressView().controlSize(.mini)
+                    Text("Restarting…")
+                } else {
+                    Text("Save & Restart")
                 }
             }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.regular)
-            .disabled(isSaving)
         }
+        .buttonStyle(.borderedProminent)
+        .controlSize(.regular)
+        .disabled(isSaving)
     }
 
     @ViewBuilder
