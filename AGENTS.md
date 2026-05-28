@@ -542,4 +542,40 @@ Reference implementation: /Volumes/Marian_Backup/work/pylonrack-slots/llama/
   known issues (psutil, orphan processes, WebView reload), slot app contract.
   Test count at audit: 86/86 passing.
   Active slot apps: pylonrack-slots/llama, pylonrack-slots/benchmark
+
+2026-05-28 — Major audit after long implementation session
+  Changes:
+  - BodyMode enum: .webview | .log | .models (replaced showLog: Bool)
+  - ModelManagerView: HF browse/download/delete, actionResultToken pattern
+  - WebViewPanel: NSViewContainer subclass, load triggered from viewDidMoveToWindow+layout
+    CRITICAL: WKWebView created in handleManifest WITHOUT load — load triggered only after
+    non-zero frame from SwiftUI layout. Prevents blank WebView on startup.
+  - WKWebView persistent: created once in SlotConnection.handleManifest, reset only on deactivate()
+    NOT reset on reconnect — preserves session across heartbeat reconnects
+  - ZStack body: WebViewPanel always in hierarchy during log/models toggle — prevents SPA reset
+  - show_log protocol message: rack auto-switches to bodyMode=.log + requestLog()
+  - Heartbeat suspend during update: tick() checks updateInProgress (status_label == Updating...)
+    Prevents reconnect during cmake builds (minutes long)
+    missedBeats reset when update finishes via applyControlsUpdate()
+  - AppDelegate.applicationWillTerminate: pkill -TERM -f server.py → prevents orphan processes on quit
+  - AddSlotView removed: + button opens NSOpenPanel directly
+  - Remote slot type removed from UI
+  - Tooltip delay: 0.5s via UserDefaults NSInitialToolTipDelay + NSToolTipDelay
+  - SlotControlsView: update button filtered to right side, separated by Divider
+  - ModeToggleButton: log + models toggles with .help() tooltips
+  
+  Protocol additions:
+  - show_log (app→rack): rack sets bodyMode=.log
+  - reload_ui now also calls wv.load() directly on persistent WKWebView instance
+  - log_response total=-1: streaming append to logLines (not replace)
+  - actionResultToken: UUID changes on each action_result → ModelManagerView observes
+  
+  ACTIVE BUG (in progress at audit):
+  - During cmake build, log disappears from view at ~11% 
+    Test confirmed: WebSocket protocol works correctly (268 lines received)
+    Problem is in Swift: receive loop error causes reconnect despite heartbeat suspend
+    NSLog added to onDropped() and receiveLoop error handler for diagnosis
+    Status: NSLog logging added, waiting for user to report Console.app output
+  
+  Test count: 86/86 passing (Swift), 42/43 (Python — 1 expected fail: binary stale)
 ```
