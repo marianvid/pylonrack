@@ -7,6 +7,7 @@ enum BodyMode: Equatable {
     case webview
     case log
     case models
+    case settings
 }
 
 // MARK: - WebSocket delegate bridge
@@ -156,6 +157,12 @@ final class SlotConnection: ObservableObject {
     func sendAction(_ controlId: String, value: String? = nil) {
         var dict: [String: Any] = ["type": "action", "control_id": controlId]
         if let v = value { dict["value"] = v }
+        send(dict)
+    }
+
+    func sendActionWithSettings(_ controlId: String, settings: [String: Any]) {
+        var dict: [String: Any] = ["type": "action", "control_id": controlId]
+        dict["settings"] = settings
         send(dict)
     }
 

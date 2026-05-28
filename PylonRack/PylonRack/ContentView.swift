@@ -192,9 +192,15 @@ struct SlotDetailView: View {
                         ModelManagerView(conn: conn)
                             .background(Color(nsColor: .textBackgroundColor))
                     }
+                    if conn.bodyMode == .settings {
+                        SettingsPanelView(conn: conn)
+                            .background(Color(nsColor: .textBackgroundColor))
+                    }
                 }
             } else if conn.bodyMode == .models {
                 ModelManagerView(conn: conn)
+            } else if conn.bodyMode == .settings {
+                SettingsPanelView(conn: conn)
             } else {
                 connectedPlaceholder
             }

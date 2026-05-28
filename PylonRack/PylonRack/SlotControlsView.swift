@@ -89,6 +89,12 @@ struct SlotControlsView: View {
                 active: conn.bodyMode == .models,
                 help:   conn.bodyMode == .models ? "Hide model manager" : "Download & manage models"
             ) { onToggleMode(.models) }
+
+            ModeToggleButton(
+                icon:   "gearshape",
+                active: conn.bodyMode == .settings,
+                help:   conn.bodyMode == .settings ? "Hide settings" : "Server & model settings"
+            ) { onToggleMode(.settings) }
         }
     }
 
