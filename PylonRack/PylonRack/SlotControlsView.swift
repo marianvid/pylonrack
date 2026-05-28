@@ -124,10 +124,15 @@ struct SlotControlsView: View {
             return (ctrl.label == "Stop" || ctrl.label == "Stopping…")
                 ? "Stop llama-server" : "Start llama-server"
         case "update":
+            let style = ctrl.style ?? .secondary
             let badge = ctrl.badge == true
-            return badge
-                ? "Update available — click to pull & rebuild llama.cpp"
-                : "llama.cpp is up to date"
+            if style == .error && badge {
+                return "Binary is outdated — sources newer than binary. Click to rebuild."
+            } else if badge {
+                return "Update available — click to pull latest sources & rebuild"
+            } else {
+                return "llama.cpp is up to date"
+            }
         default:
             return ctrl.label ?? ctrl.id
         }
