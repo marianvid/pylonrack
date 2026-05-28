@@ -402,7 +402,8 @@ struct ModelManagerView: View {
 
     private func searchHF() {
         isSearching   = true
-        searchResults = []
+        // Don't clear searchResults — keep old list visible until new response arrives
+        // Clearing causes blank panel for the full search duration (10-30s)
         selectedModel = nil
         modelFiles    = []
         conn.sendAction("hf_search", value: searchQuery)
@@ -434,7 +435,7 @@ struct ModelManagerView: View {
             case "hf_search_results":
                 isSearching = false
                 if let results = update["results"] as? [[String: Any]] {
-                    searchResults = results.compactMap { r in
+                    let parsed = results.compactMap { r -> HFModel? in
                         guard let id = r["id"] as? String else { return nil }
                         return HFModel(
                             id: id,
@@ -443,6 +444,8 @@ struct ModelManagerView: View {
                             description: r["description"] as? String
                         )
                     }
+                    // Only replace if we got results — keep old list on empty response
+                    if !parsed.isEmpty { searchResults = parsed }
                 }
             case "hf_model_files_result":
                 isLoadingFiles = false
