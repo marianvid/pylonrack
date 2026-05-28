@@ -104,12 +104,7 @@ struct SettingsPanelView: View {
             Text("Server Settings")
                 .font(.headline)
             Spacer()
-            if savedBanner {
-                Label("Saved", systemImage: "checkmark.circle.fill")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(.green)
-                    .transition(.opacity)
-            }
+
         }
         .padding(.horizontal, 24)
         .padding(.top, 20)
@@ -197,10 +192,8 @@ struct SettingsPanelView: View {
             }
         case "settings_saved":
             isSaving = false
-            withAnimation { savedBanner = true }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                withAnimation { savedBanner = false }
-            }
+            // Close settings panel — return to webview
+            conn.toggleMode(.settings)
         default:
             break
         }
