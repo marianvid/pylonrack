@@ -87,7 +87,8 @@ struct ModelManagerView: View {
     private func tabButton(_ label: String, tab t: Tab, icon: String) -> some View {
         Button {
             tab = t
-            if t == .local  { loadLocalModels() }
+            // Don't refresh local models during active download — would show partial file
+            if t == .local && downloadingFile == nil { loadLocalModels() }
             if t == .browse && searchResults.isEmpty { searchHF() }
         } label: {
             HStack(spacing: 5) {
@@ -114,9 +115,10 @@ struct ModelManagerView: View {
                     LazyVStack(alignment: .leading, spacing: 0) {
                         ForEach(localModels) { model in
                             localModelRow(model)
-                            Divider().padding(.leading, 10)
+                            Divider().padding(.leading, 25)
                         }
                     }
+                    .padding(.horizontal, 15)
                 }
             }
         }
@@ -171,7 +173,6 @@ struct ModelManagerView: View {
             .help("Delete model")
         }
         .padding(.vertical, 4)
-        .padding(.horizontal, 15)
     }
 
     // MARK: - Browse tab
