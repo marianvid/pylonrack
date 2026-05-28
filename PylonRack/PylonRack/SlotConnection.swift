@@ -339,6 +339,7 @@ final class SlotConnection: ObservableObject {
     }
 
     private func applyControlsUpdate(_ updates: [[String: Any]]) {
+        let wasUpdating = updateInProgress
         for update in updates {
             guard let id  = update["id"] as? String,
                   let idx = controls.firstIndex(where: { $0.id == id }) else { continue }
@@ -348,6 +349,11 @@ final class SlotConnection: ObservableObject {
             if let styleStr = update["style"]  as? String,
                let style    = ControlStyle(rawValue: styleStr) { controls[idx].style = style }
             if let items    = update["items"]  as? [String] { controls[idx].items = items }
+        }
+        // Reset heartbeat state when update finishes — prevents stale miss count triggering reconnect
+        if wasUpdating && !updateInProgress {
+            pendingPong = false
+            missedBeats = 0
         }
     }
 
@@ -360,7 +366,17 @@ final class SlotConnection: ObservableObject {
         }
     }
 
+    // Heartbeat is suspended when update is in progress on this slot
+    // to prevent reconnect during long cmake builds
+    private var updateInProgress: Bool {
+        controls.first(where: { $0.id == "status_label" })?.value == "Updating…"
+    }
+
     private func tick() {
+        // Suspend heartbeat while slot is updating — cmake builds take minutes
+        // Log streaming continues independently via log_response messages
+        guard !updateInProgress else { return }
+
         if pendingPong {
             missedBeats += 1
             if missedBeats >= settings.reconnectAttempts { scheduleReconnect(); return }
