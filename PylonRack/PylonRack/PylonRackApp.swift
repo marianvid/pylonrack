@@ -6,6 +6,8 @@ struct PylonRackApp: App {
     @StateObject private var settingsStore = SettingsStore()
     private let system: SystemEnvironment  = MacSystemEnvironment()
 
+    @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+
     init() {
         // Reduce tooltip delay to 0.5s (default is ~2s)
         UserDefaults.standard.set(0.5, forKey: "NSInitialToolTipDelay")
@@ -129,5 +131,19 @@ struct MenuBarSlotRow: View {
         case .error:         return "error"
         case .missing:       return "missing"
         }
+    }
+}
+
+
+
+// MARK: - App Delegate (termination cleanup)
+
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    func applicationWillTerminate(_ notification: Notification) {
+        let task = Process()
+        task.executableURL = URL(fileURLWithPath: "/bin/zsh")
+        task.arguments = ["-c", "pkill -TERM -f server.py 2>/dev/null; sleep 1; pkill -KILL -f server.py 2>/dev/null"]
+        try? task.run()
+        task.waitUntilExit()
     }
 }
