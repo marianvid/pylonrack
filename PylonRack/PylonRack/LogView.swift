@@ -72,6 +72,7 @@ struct LogView: View {
                                 Text(line)
                                     .font(.system(size: 11, design: .monospaced))
                                     .foregroundStyle(lineColor(line))
+                                    .textSelection(.enabled)
                                     .frame(maxWidth: .infinity, alignment: .leading)
                                     .padding(.horizontal, 12)
                                     .padding(.vertical, 1)
