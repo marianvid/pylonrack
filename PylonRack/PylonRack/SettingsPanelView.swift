@@ -23,8 +23,8 @@ struct SettingsPanelView: View {
     @State private var mlock:     Bool = false
 
     // Draft model
-    @State private var draftModelPath:       String = ""   // "" = disabled
-    @State private var draftModelCandidates: [(name: String, path: String, sizeGb: Double)] = []
+    @State private var draftModelPath: String = ""   // "" = disabled
+    @State private var hfCachePath:    String = ""
 
     // UI state
     @State private var isSaving:    Bool   = false
@@ -78,30 +78,34 @@ struct SettingsPanelView: View {
                             .controlSize(.small)
                     }
                     section("Speculative Decoding") {
-                        if draftModelCandidates.isEmpty {
-                            Text("No compatible draft models found. Download a smaller model with the same tokenizer as the current model.")
-                                .font(.system(size: 12))
-                                .foregroundStyle(.secondary)
-                        } else {
-                            HStack {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text("Draft model")
-                                        .font(.system(size: 13))
-                                    Text("same tokenizer, < 1/3 size")
-                                        .font(.system(size: 11))
-                                        .foregroundStyle(.tertiary)
+                        HStack(spacing: 8) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Draft model")
+                                    .font(.system(size: 13))
+                                Text("must share same tokenizer as main model")
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(.tertiary)
+                            }
+                            Spacer()
+                            TextField("None", text: $draftModelPath)
+                                .textFieldStyle(.roundedBorder)
+                                .font(.system(size: 12, design: .monospaced))
+                                .frame(width: 220)
+                            Button {
+                                browseDraftModel()
+                            } label: {
+                                Image(systemName: "folder")
+                            }
+                            .buttonStyle(.bordered)
+                            .controlSize(.small)
+                            if !draftModelPath.isEmpty {
+                                Button {
+                                    draftModelPath = ""
+                                } label: {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .foregroundStyle(.secondary)
                                 }
-                                Spacer()
-                                Picker("", selection: $draftModelPath) {
-                                    Text("Disabled").tag("")
-                                    ForEach(draftModelCandidates, id: \.path) { c in
-                                        Text("\(c.name) (\(String(format: "%.1f", c.sizeGb)) GB)").tag(c.path)
-                                    }
-                                }
-                                .pickerStyle(.menu)
-                                .controlSize(.small)
-                                .frame(width: 260)
-                                .labelsHidden()
+                                .buttonStyle(.plain)
                             }
                         }
                     }
@@ -223,20 +227,27 @@ struct SettingsPanelView: View {
                 mlock        = s["mlock"]       as? Bool ?? false
             }
             draftModelPath = data["draft_model"] as? String ?? ""
-            if let candidates = data["draft_model_candidates"] as? [[String: Any]] {
-                draftModelCandidates = candidates.compactMap { c in
-                    guard let name = c["display_name"] as? String,
-                          let path = c["full_path"]    as? String,
-                          let size = c["size_gb"]      as? Double else { return nil }
-                    return (name: name, path: path, sizeGb: size)
-                }
-            }
+            hfCachePath    = data["hf_cache"]    as? String ?? ""
         case "settings_saved":
             isSaving = false
             // Close settings panel — return to webview
             conn.toggleMode(.settings)
         default:
             break
+        }
+    }
+
+    private func browseDraftModel() {
+        let panel = NSOpenPanel()
+        panel.title          = "Select Draft Model"
+        panel.allowedContentTypes = [.init(filenameExtension: "gguf")!]
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories    = false
+        if !hfCachePath.isEmpty {
+            panel.directoryURL = URL(fileURLWithPath: hfCachePath)
+        }
+        if panel.runModal() == .OK, let url = panel.url {
+            draftModelPath = url.path
         }
     }
 
