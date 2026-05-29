@@ -117,8 +117,7 @@ struct ContentView: View {
         guard let config = LocalSlotConfig.load(from: url) else { return }
         _ = delegate  // retain
 
-        let slot = Slot(name: config.name, host: "localhost",
-                        port: config.port, localPath: url.path)
+        let slot = Slot(name: config.name, port: config.port, localPath: url.path)
         rack.addSlot(slot, config: config)
     }
 

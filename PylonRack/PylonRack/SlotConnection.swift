@@ -201,8 +201,7 @@ final class SlotConnection: ObservableObject {
 
     private var effectiveURL: URL? {
         let port = runtimePort ?? slot.port
-        let host = slot.isLocal ? "localhost" : slot.host
-        return URL(string: "ws://\(host):\(port)")
+        return URL(string: "ws://localhost:\(port)")
     }
 
     private func connect() async {

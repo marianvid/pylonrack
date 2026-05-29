@@ -76,11 +76,11 @@ receiveLoop: does NOT call scheduleReconnect() when updateInProgress
 struct Slot: Identifiable, Codable, Hashable {
     let id: UUID
     var name: String
-    var host: String
     var port: Int
-    var localPath: String?   // nil = remote slot
+    var localPath: String     // required; remote slots no longer supported
     var isActive: Bool
-    var isLocal: Bool { localPath != nil }
+    // Custom init(from:) tolerates legacy slots.json with `host` field;
+    // rejects entries without localPath (legacy remote slots).
 }
 ```
 Persisted: `~/Library/Application Support/PylonRack/slots.json`
@@ -147,7 +147,8 @@ struct RackLogEntry: Identifiable {
 ### Transport
 - WebSocket RFC 6455, ws:// only (no wss in current impl)
 - Rack = client, slot app = server
-- Local slots: rack sets env var PYLON_PORT before launch; slot reads it
+- Rack always connects to `ws://localhost:<port>`
+- Rack sets env var PYLON_PORT before launch; slot reads it
 - All messages: JSON UTF-8
 
 ### Connection sequence
@@ -558,4 +559,30 @@ Reference implementation: /Volumes/Marian_Backup/work/pylonrack-slots/llama/
   - settings_map: {model_path: {server_settings}}
   - server.temperature, server.top_p, server.top_k, server.repeat_penalty
   - server.flash_attn, server.mlock
+
+2026-05-30 — Remote slot removal refactor
+  REMOVED:
+  - Slot.host: String field (was always "localhost" in practice)
+  - Slot.localPath: now non-optional String (was Optional with nil=remote)
+  - Slot.isLocal computed property
+  - All `if slot.isLocal { launch } else { connect }` branches in RackController
+  - SlotConnection.effectiveURL host selection (now always localhost)
+  - Documentation references to remote/host across DOCUMENTATION.md and AGENTS.md
+
+  ADDED:
+  - Slot.init(from:) custom decoder: tolerates legacy slots.json with `host`
+    field; rejects entries without localPath (legacy remote slots throw
+    DecodingError so they're skipped at load time)
+
+  TESTS:
+  - Removed test_remoteSlot_isNotLocal
+  - Added test_decodesLegacySlotsJsonWithHost (backward compat verified)
+  - Added test_rejectsLegacyRemoteSlot (legacy remote entries rejected)
+  - Updated all Slot(name:, host:, port:[, isActive:]) -> Slot(name:, port:,
+    localPath: "/tmp"[, isActive:]) across RackControllerTests and
+    SlotConnectionTests via sed
+  - Fixed IncomingMessageTests log_response case to match 3-param enum
+
+  RESULT: 87 tests pass, BUILD SUCCEEDED. Simpler model surface; one
+  fewer code path to maintain.
 ```

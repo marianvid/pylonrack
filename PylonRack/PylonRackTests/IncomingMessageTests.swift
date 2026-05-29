@@ -40,7 +40,7 @@ final class IncomingMessageTests: XCTestCase {
     func test_logResponse() {
         let raw = #"{"type":"log_response","lines":["a","b"],"total":42}"#
         let msg = IncomingMessage.decode(from: raw)
-        guard case .logResponse(let lines, let total) = msg else { return XCTFail() }
+        guard case .logResponse(let lines, let total, _) = msg else { return XCTFail() }
         XCTAssertEqual(lines, ["a", "b"])
         XCTAssertEqual(total, 42)
     }

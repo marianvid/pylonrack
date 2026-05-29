@@ -153,7 +153,7 @@ final class SlotConnectionTests: XCTestCase {
         conn.activate(port: 19212)
 
         try await waitFor(timeout: 5) { conn.manifest != nil }
-        conn.requestLog(lines: 10, offset: 0)
+        conn.requestLog(lines: 10, skip: 0)
         try await waitFor(timeout: 3) { !conn.logLines.isEmpty }
         XCTAssertEqual(conn.logLines.count, 10)
         XCTAssertEqual(conn.logTotal, 100)
@@ -202,7 +202,7 @@ final class SlotConnectionTests: XCTestCase {
     // MARK: - Helpers
 
     private func makeConn(port: Int) -> SlotConnection {
-        SlotConnection(slot: Slot(name: "Mock", host: "localhost", port: port),
+        SlotConnection(slot: Slot(name: "Mock", port: port, localPath: "/tmp"),
                        settings: .defaults)
     }
 

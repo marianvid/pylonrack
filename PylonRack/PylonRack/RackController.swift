@@ -43,8 +43,7 @@ final class RackController: ObservableObject {
         for slot in slots {
             let conn = makeConnection(for: slot)
             if slot.isActive {
-                if slot.isLocal { launchProcess(for: slot, conn: conn) }
-                else            { conn.activate() }
+                launchProcess(for: slot, conn: conn)
             } else {
                 conn.deactivate()
             }
@@ -94,8 +93,7 @@ final class RackController: ObservableObject {
         slots[idx].isActive = true
         saveSlots()
         let conn = makeConnection(for: slots[idx])
-        if slots[idx].isLocal { launchProcess(for: slots[idx], conn: conn) }
-        else                  { conn.activate() }
+        launchProcess(for: slots[idx], conn: conn)
     }
 
     func connection(for slot: Slot) -> SlotConnection? {
@@ -111,8 +109,7 @@ final class RackController: ObservableObject {
         saveSlots()
         log("Activating \(slot.name)")
         let conn = connections[slot.id] ?? makeConnection(for: slots[idx])
-        if slots[idx].isLocal { launchProcess(for: slots[idx], conn: conn) }
-        else                  { conn.activate() }
+        launchProcess(for: slots[idx], conn: conn)
     }
 
     // MARK: - Deactivate
@@ -123,27 +120,24 @@ final class RackController: ObservableObject {
         connections[slot.id]?.status        = .disconnecting
         connections[slot.id]?.statusMessage = "Disconnecting…"
 
-        if slots[idx].isLocal {
-            let connIsActive = connections[slot.id].map {
-                $0.status == .connected || $0.status == .warning || $0.status == .connecting
-            } ?? false
-            if connIsActive {
-                connections[slot.id]?.sendShutdown()
-                try? await Task.sleep(nanoseconds: 3_000_000_000)
-            }
-            if let config = configs[slot.id], let stopCmd = config.stop,
-               let path = slots[idx].localPath {
-                await processes[slot.id]?.runScript(stopCmd, workingDir: path)
-            }
-            processes[slot.id]?.sendSIGTERM()
-            for _ in 0..<30 {
-                if processes[slot.id]?.isRunning != true { break }
-                try? await Task.sleep(nanoseconds: 100_000_000)
-            }
-            if processes[slot.id]?.isRunning == true { processes[slot.id]?.sendSIGKILL() }
-            processes.removeValue(forKey: slot.id)
-            runtimePorts.removeValue(forKey: slot.id)
+        let connIsActive = connections[slot.id].map {
+            $0.status == .connected || $0.status == .warning || $0.status == .connecting
+        } ?? false
+        if connIsActive {
+            connections[slot.id]?.sendShutdown()
+            try? await Task.sleep(nanoseconds: 3_000_000_000)
         }
+        if let config = configs[slot.id], let stopCmd = config.stop {
+            await processes[slot.id]?.runScript(stopCmd, workingDir: slots[idx].localPath)
+        }
+        processes[slot.id]?.sendSIGTERM()
+        for _ in 0..<30 {
+            if processes[slot.id]?.isRunning != true { break }
+            try? await Task.sleep(nanoseconds: 100_000_000)
+        }
+        if processes[slot.id]?.isRunning == true { processes[slot.id]?.sendSIGKILL() }
+        processes.removeValue(forKey: slot.id)
+        runtimePorts.removeValue(forKey: slot.id)
 
         connections[slot.id]?.deactivate()
         slots[idx].isActive = false
@@ -161,7 +155,7 @@ final class RackController: ObservableObject {
     }
 
     private func launchProcess(for slot: Slot, conn: SlotConnection) {
-        guard let path = slot.localPath else { return }
+        let path = slot.localPath
         let folderURL = URL(fileURLWithPath: path)
 
         if configs[slot.id] == nil {
@@ -215,10 +209,8 @@ final class RackController: ObservableObject {
         guard let data = try? Data(contentsOf: slotsURL),
               let list = try? JSONDecoder().decode([Slot].self, from: data) else { return }
         slots = list
-        for slot in slots where slot.isLocal {
-            if let path = slot.localPath {
-                configs[slot.id] = LocalSlotConfig.load(from: URL(fileURLWithPath: path))
-            }
+        for slot in slots {
+            configs[slot.id] = LocalSlotConfig.load(from: URL(fileURLWithPath: slot.localPath))
         }
     }
 

@@ -133,20 +133,17 @@ final class LocalSlotConfigTests: XCTestCase {
 
 final class SlotTests: XCTestCase {
 
-    func test_localSlot_isLocal() {
-        XCTAssertTrue(Slot(name: "A", host: "localhost", port: 9001, localPath: "/tmp").isLocal)
-    }
-
-    func test_remoteSlot_isNotLocal() {
-        XCTAssertFalse(Slot(name: "A", host: "192.168.1.1", port: 9001).isLocal)
+    func test_slotHasLocalPath() {
+        let slot = Slot(name: "A", port: 9001, localPath: "/tmp")
+        XCTAssertEqual(slot.localPath, "/tmp")
     }
 
     func test_defaultIsActive_isFalse() {
-        XCTAssertFalse(Slot(name: "A", host: "localhost", port: 9001).isActive)
+        XCTAssertFalse(Slot(name: "A", port: 9001, localPath: "/tmp").isActive)
     }
 
     func test_codableRoundTrip() throws {
-        let original = Slot(name: "App", host: "localhost", port: 9001,
+        let original = Slot(name: "App", port: 9001,
                             localPath: "/tmp/app", isActive: true)
         let decoded  = try JSONDecoder().decode(Slot.self, from: JSONEncoder().encode(original))
         XCTAssertEqual(decoded.id,        original.id)
@@ -154,5 +151,25 @@ final class SlotTests: XCTestCase {
         XCTAssertEqual(decoded.port,      original.port)
         XCTAssertEqual(decoded.localPath, original.localPath)
         XCTAssertEqual(decoded.isActive,  original.isActive)
+    }
+
+    func test_decodesLegacySlotsJsonWithHost() throws {
+        // Pre-refactor slots.json had a `host` field; ensure we silently accept it.
+        let id = UUID().uuidString
+        let legacy = "{\"id\":\"\(id)\",\"name\":\"L\",\"host\":\"localhost\",\"port\":9001,\"localPath\":\"/tmp/x\",\"isActive\":true}"
+        let data = legacy.data(using: .utf8)!
+        let decoded = try JSONDecoder().decode(Slot.self, from: data)
+        XCTAssertEqual(decoded.name,      "L")
+        XCTAssertEqual(decoded.port,      9001)
+        XCTAssertEqual(decoded.localPath, "/tmp/x")
+        XCTAssertTrue(decoded.isActive)
+    }
+
+    func test_rejectsLegacyRemoteSlot() {
+        // Pre-refactor remote slots had no localPath (or null). Should fail to decode.
+        let id = UUID().uuidString
+        let legacy = "{\"id\":\"\(id)\",\"name\":\"R\",\"host\":\"192.168.1.1\",\"port\":9001,\"isActive\":false}"
+        let data = legacy.data(using: .utf8)!
+        XCTAssertThrowsError(try JSONDecoder().decode(Slot.self, from: data))
     }
 }

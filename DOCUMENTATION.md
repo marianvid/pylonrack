@@ -60,7 +60,7 @@ xattr -dr com.apple.quarantine /Applications/PylonRack.app
 
 PylonRack is a macOS menu bar application that acts as a universal launcher and monitor for independent services and applications. Think of it as a physical server rack — each slot holds one application, each application runs independently, and the rack provides a unified interface to manage, monitor, and interact with all of them from a single place.
 
-The rack does not care what technology your application uses. It can be a Python script, a Node.js server, a native macOS app, a remote cloud service, or anything else — as long as it speaks the PylonRack protocol over a WebSocket connection.
+The rack does not care what technology your application uses. It can be a Python script, a Node.js server, a native macOS app, or anything else — as long as it speaks the PylonRack protocol over a WebSocket connection.
 
 ---
 
@@ -76,10 +76,8 @@ A slot is a placeholder in the rack for one application. Each slot has:
 
 Slots are persistent — they survive rack restarts. Their active/inactive state is also persistent: if a slot was active when you quit the rack, it will be automatically reactivated on the next launch.
 
-### Local vs Remote Applications
-**Local applications** live on disk. The rack launches them as child processes and manages their lifecycle. You add them by browsing to their folder — the rack reads a `rack.json` configuration file to understand how to start them.
-
-**Remote applications** are already running somewhere (locally on another port, on a LAN machine, or in the cloud). You add them by providing a host and port manually. The rack connects to them but never starts or stops them.
+### Slot Applications
+Applications live on disk. The rack launches them as child processes and manages their lifecycle. You add them by browsing to their folder — the rack reads a `rack.json` configuration file to understand how to start them.
 
 ### The Protocol
 All communication between the rack and an application happens over a **WebSocket connection** using **JSON messages**. The rack is always the client — it connects to the application's WebSocket server. This makes the protocol universally implementable in any language or runtime.
@@ -145,30 +143,20 @@ Settings are stored in `~/Library/Application Support/PylonRack/settings.json`.
 
 ## Adding a Slot
 
-### Local Application
 1. Click `+` in the slot list
-2. The dialog opens in **Local** mode by default
-3. Click **Browse…** — a file picker opens at your Default Location
-4. Navigate to your application folder and click **Open**
-5. The rack validates the folder — it must contain a valid `rack.json` file
-6. If valid, the application name and address are shown with a green checkmark
-7. Click **Add**
+2. A file picker opens at your Default Location
+3. Navigate to your application folder and click **Open**
+4. The rack validates the folder — it must contain a valid `rack.json` file
 
 The slot is added in **inactive** state. Press ▶ to activate it.
-
-### Remote Application
-1. Click `+`
-2. Switch to the **Remote** tab
-3. Enter a name, host, and port
-4. Click **Add**
 
 ---
 
 ## Activating and Deactivating
 
-**Activate (▶):** For local apps, the rack launches the process and connects. For remote apps, the rack connects to the existing service.
+**Activate (▶):** The rack launches the application process and connects to its WebSocket server.
 
-**Deactivate (■):** For local apps, the rack sends a graceful shutdown message, waits, then sends SIGTERM, then SIGKILL if necessary. For remote apps, the rack simply disconnects — the remote service is left running.
+**Deactivate (■):** The rack sends a graceful shutdown message, waits, then sends SIGTERM, then SIGKILL if necessary.
 
 ---
 
@@ -180,7 +168,7 @@ The slot is added in **inactive** state. Press ▶ to activate it.
 └── slots.json       ← slot list (configuration only, no runtime state)
 ```
 
-`slots.json` stores only static configuration (name, host, port, local path, active flag). Runtime state (status, manifest, log) is always fetched live.
+`slots.json` stores only static configuration (name, port, local path, active flag). Runtime state (status, manifest, log) is always fetched live.
 
 ---
 
@@ -198,8 +186,8 @@ A slot application is any service that implements the PylonRack WebSocket protoc
 
 - **Protocol:** WebSocket (RFC 6455)
 - **Format:** JSON, UTF-8
-- **Address:** `ws://<host>:<port>` — for local apps, host is always `localhost`
-- **Port:** For local apps, read from the `PYLON_PORT` environment variable (set by the rack at launch). Fall back to your preferred port if the variable is not set.
+- **Address:** `ws://localhost:<port>` — the rack always connects locally
+- **Port:** Read from the `PYLON_PORT` environment variable (set by the rack at launch). Fall back to your preferred port if the variable is not set.
 
 ```python
 # Python example
@@ -214,9 +202,9 @@ const port = parseInt(process.env.PYLON_PORT) || 9001
 
 ---
 
-## Local Application Structure
+## Slot Application Structure
 
-A local application must have a `rack.json` file in its root folder.
+A slot application must have a `rack.json` file in its root folder.
 
 ### `rack.json`
 
@@ -458,7 +446,7 @@ For dropdowns, the selected value is included:
 
 **Rack → App**
 ```json
-{ "type": "log_request", "lines": 50, "offset": 0 }
+{ "type": "log_request", "lines": 50, "skip": 0 }
 ```
 
 **App → Rack**
@@ -496,11 +484,11 @@ fh = RotatingFileHandler(LOG_FILE, maxBytes=5*1024*1024, backupCount=3)
 fh.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
 logger.addHandler(fh)
 
-def read_log(n, offset):
+def read_log(n, skip):
     try:
         lines = open(LOG_FILE).readlines()
         total = len(lines)
-        end   = max(0, total - offset)
+        end   = max(0, total - skip)
         return [l.rstrip() for l in lines[max(0, end-n):end]], total
     except Exception:
         return [], 0
@@ -528,7 +516,7 @@ async def handle(ws):
             await ws.send(json.dumps({"type": "action_result", "control_id": cid, "success": True, "message": "Done"}))
 
         elif t == "log_request":
-            lines, total = read_log(msg.get("lines", 50), msg.get("offset", 0))
+            lines, total = read_log(msg.get("lines", 50), msg.get("skip", 0))
             await ws.send(json.dumps({"type": "log_response", "lines": lines, "total": total}))
 
         elif t == "shutdown":
