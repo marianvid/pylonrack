@@ -56,6 +56,8 @@ struct ModelManagerView: View {
     @State private var statusMessage:  String     = ""
     @State private var deleteTarget:   LocalGGUF? = nil
     @State private var showDeleteAlert: Bool      = false
+    @State private var selectedLocalModel: LocalGGUF? = nil
+    @State private var selectedFile:       HFModelFile? = nil
 
     var body: some View {
         VStack(spacing: 0) {
@@ -173,6 +175,10 @@ struct ModelManagerView: View {
             .help("Delete model")
         }
         .padding(.vertical, 4)
+        .background(selectedLocalModel?.id == model.id
+            ? Color.accentColor.opacity(0.12) : Color.clear)
+        .contentShape(Rectangle())
+        .onTapGesture { selectedLocalModel = model }
     }
 
     // MARK: - Browse tab
@@ -361,6 +367,10 @@ struct ModelManagerView: View {
                 downloadButton(model: model, file: file)
             }
             .padding(.vertical, 3)
+            .listRowBackground(selectedFile?.id == file.id
+                ? Color.accentColor.opacity(0.12) : Color.clear)
+            .contentShape(Rectangle())
+            .onTapGesture { selectedFile = file }
         }
         .listStyle(.inset)
     }
@@ -414,6 +424,7 @@ struct ModelManagerView: View {
     private func loadFiles(for model: HFModel) {
         isLoadingFiles = true
         modelFiles     = []
+        selectedFile   = nil
         conn.sendAction("hf_model_files", value: model.id)
     }
 
