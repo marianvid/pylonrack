@@ -48,8 +48,7 @@ PylonRackApp
 ContentView
   └── SlotDetailView
         ├── SlotControlsView   native controls from manifest
-        └── WebViewPanel       WKWebView NSViewRepresentable
-              └── .id(reloadUIToken)  → recreate on reload_ui message
+        └── body panel (one of): WebViewPanel | LogView | ModelManagerView | SettingsPanelView
 ```
 
 ### Key design decisions
@@ -62,6 +61,10 @@ killpg: SlotProcess uses setpgid + killpg(pgid, SIGTERM/SIGKILL) → kills zsh +
 WebView reload: reloadUIToken UUID on SlotConnection; .id(token) on WebViewPanel → SwiftUI recreates WKWebView fresh
 process detection: lsof -iTCP:<port> -sTCP:LISTEN -t (not psutil.net_connections — fails without root on macOS)
 pbxproj: hand-maintained, generated via Python scripts when adding files. Pattern: AA=app sources, BB=test sources, BS=shared sources (app files compiled into test target)
+URLSession for WebSocket: timeoutIntervalForRequest=.infinity, timeoutIntervalForResource=.infinity
+  REASON: default 60s kills WebSocket during long cmake builds where server sends nothing
+receiveLoop: does NOT call scheduleReconnect() when updateInProgress
+  REASON: cmake builds take minutes; reconnect would break live log streaming
 ```
 
 ---
@@ -163,8 +166,8 @@ rack connects → sends manifest request → app responds with manifest
 | manifest | — | request manifest on every connect |
 | ping | — | heartbeat, sent every N seconds |
 | control_data | control_id:String | request dropdown items |
-| action | control_id:String, value?:String | user interacted with control |
-| log_request | lines:Int, offset:Int | fetch log lines |
+| action | control_id:String, value?:String, settings?:Dict | user interacted with control |
+| log_request | lines:Int, skip:Int | fetch log lines (skip=0: tail, skip=N: load older) |
 | shutdown | — | graceful stop; app must sys.exit(0) |
 
 ### Message catalogue (app→rack)
@@ -175,32 +178,35 @@ rack connects → sends manifest request → app responds with manifest
 | pong | status:String, message:String | heartbeat response |
 | control_data | control_id:String, items:[String] | dropdown population |
 | controls_update | controls:[{id, label?, value?, style?, badge?, items?}] | push state change |
-| action_result | control_id:String, success:Bool, message?:String | action ack |
-| log_response | lines:[String], total:Int | log lines |
+| action_result | action:String, data:{type,...} | action response, routed via actionResultToken |
+| log_response | lines:[String], total:Int, prepend:Bool | log lines |
 | reload_ui | — | signal WebView to reload (e.g. after model change) |
+| show_log | — | rack auto-switches to bodyMode=.log |
+
+### log_response semantics
+```
+total >= 0, prepend=false  → initial fetch, replace logLines
+total == -1, prepend=false → streaming append (file watcher push)
+prepend=true               → load earlier lines, prepend to logLines (load more)
+```
 
 ### Heartbeat state machine
 ```
 connected → pendingPong=true, send ping
   ↳ pong received → pendingPong=false, missedBeats=0, status=connected|warning|error
   ↳ no pong → missedBeats++ → if missedBeats >= reconnectAttempts → scheduleReconnect
+  ↳ updateInProgress=true → tick() returns early, NO heartbeat sent, NO reconnect
 ```
 
-### Reconnect logic
-```
-scheduleReconnect():
-  isReconnecting=true, tearDown()
-  reconnectCount++
-  if reconnectCount > max: status=error, onRackLog(message), return
-  sleep(2s), connect()
-```
-
-### controls_update partial update
-```
-Only fields present in update dict are applied.
-Missing fields: unchanged.
-Mutable fields: label, value, style, badge, items.
-id and type are immutable after manifest.
+### updateInProgress detection
+```swift
+// In SlotConnection:
+private var updateInProgress: Bool {
+    controls.first(where: { $0.id == "status_label" })?.value == "Updating…"
+}
+// Heartbeat suspended when true
+// receiveLoop does NOT call scheduleReconnect() when true
+// missedBeats reset when update finishes (applyControlsUpdate detects transition)
 ```
 
 ---
@@ -213,143 +219,166 @@ status: SlotStatus          → .connecting|.connected|.warning|.error|.missing|
 statusMessage: String       → human-readable status for display
 manifest: SlotManifest?     → nil until first manifest received
 controls: [SlotControl]     → mutable, updated by controls_update
-showLog: Bool               → toggle log/webview in body
-logLines: [String]          → last N log lines from app
-logTotal: Int               → total log lines in app
+bodyMode: BodyMode          → .webview | .log | .models | .settings
+logLines: [String]          → log lines (appended from file watcher, replaced on initial fetch)
+logTotal: Int               → total log lines reported
 processLog: [String]        → stdout from local process (capped at logLinesPerRequest*10)
 appMessage: String          → last pong message (shown in status bar)
 reloadUIToken: UUID         → changes → WebViewPanel recreated via .id()
+actionResultToken: UUID     → changes on each action_result → ModelManagerView + SettingsPanelView observe
+lastActionResult: [String:Any]? → last action_result data payload
+webView: WKWebView?         → persistent, created once in handleManifest, reset only on deactivate()
+onRackLog: ((String)->Void)?→ callback to RackController for diagnostic messages
 ```
 
-### SlotStatus.color mapping
+### BodyMode enum
 ```swift
-.connecting    → .orange
-.connected     → .green
-.warning       → .yellow
-.error         → .red
-.missing       → .gray (inactive or lost)
-.disconnecting → .orange
-```
-
----
-
-## RACKCONTROLLER
-
-### Responsibilities
-```
-- owns [Slot] array (persisted)
-- owns [UUID: SlotConnection] map
-- owns [UUID: SlotProcess] map
-- owns [UUID: LocalSlotConfig] map
-- owns [UUID: Int] runtimePorts map (findFreePort result)
-- owns [RackLogEntry] rackLog (max 500, shown in RackLogView)
-- activate/deactivate/restart/reconnect/removeSlot
-- wires onRackLog callback from SlotConnection
-- auto-selects slot on addSlot (if first) and activate
-```
-
-### Process lifecycle (local slots)
-```
-activate(slot):
-  slots[idx].isActive = true
-  selectedSlotId = slot.id          // auto-select
-  conn = makeConnection(for: slot)  // sets onRackLog
-  launchProcess(for: slot, conn: conn)
-
-launchProcess:
-  load LocalSlotConfig from rack.json
-  port = findFreePort(startingFrom: config.port)
-  SlotProcess.launch(command: config.start, workingDir: path, port: port)
-  setpgid(pid, pid)                 // new process group
-  wait startup_delay if set
-  conn.activate(port: port)
-
-deactivate(slot):
-  conn.status = .disconnecting
-  if connected: conn.sendShutdown(); wait 3s
-  if stop script: run it
-  proc.sendSIGTERM(); poll 3s
-  if still running: proc.sendSIGKILL()
-  conn.deactivate()
-
-restart(slot):
-  await deactivate(slot)
-  slots[idx].isActive = true
-  makeConnection + launchProcess
-```
-
-### removeSlot ordering (CRITICAL)
-```
-Task {
-  await deactivate(slot)            // shutdown first — user sees Disconnecting state
-  if selectedSlotId == slot.id: selectedSlotId = nil
-  remove from all maps
-  slots.removeAll { $0.id == slot.id }
-  saveSlots()
+enum BodyMode: Equatable {
+    case webview    // default, show WKWebView
+    case log        // LogView overlay
+    case models     // ModelManagerView overlay
+    case settings   // SettingsPanelView overlay
 }
-// selectedSlotId NOT cleared before deactivate — keeps panel visible during shutdown
+// toggleMode(.x): if bodyMode==.x → .webview; else → .x
+// show_log message → bodyMode = .log (always, ignores current)
 ```
 
 ---
 
-## UI STRUCTURE
+## BODY PANEL ROUTING (ContentView)
 
-### Window hierarchy
-```
-MenuBarExtra → MenuBarMenuView (per-slot status + Open PylonRack + Rack Log + Settings + Quit)
-Window("main") → ContentView
-Window("rack-log") → RackLogView
-Settings → SettingsView
-```
+```swift
+let isLive = conn.status == .connected || conn.status == .warning
 
-### ContentView layout
-```
-HSplitView:
-  left (200-320px): slot list with List(selection: $rack.selectedSlotId)
-    each row: SlotRowView(slot, conn, onToggleActive, onReconnect)
-      onReconnect: if .error → Task { await rack.restart(slot) } else rack.reconnect(slot)
-  right: SlotDetailView(slot, conn, onReconnect, onRestart, onToggleLog)
-    IF connected|warning:
-      SlotControlsView(slot, conn, showLog, onToggleLog)  // HStack, no ScrollView
-      Divider
-    body:
-      .error → errorContent (shows statusMessage + "Check Rack Log")
-      .connecting|.disconnecting → ProgressView + statusMessage
-      .missing + isActive → ProgressView "Connecting…"
-      .missing + !isActive → inactiveContent
-      default:
-        if showLog → LogView
-        elif ui_url → WebViewPanel(url).id(reloadUIToken)
-        else → connectedPlaceholder
-StatusBar: rackSummary left, appMessage right
+if let wv = conn.webView, conn.status == .connected,
+   let uiURL = conn.manifest?.uiURL {
+    ZStack {
+        WebViewPanel(webView: wv, url: url)
+        if bodyMode == .log      { LogView(conn:) }
+        if bodyMode == .models   { ModelManagerView(conn:) }
+        if bodyMode == .settings { SettingsPanelView(conn:) }
+    }
+} else if isLive && bodyMode == .log      { LogView(conn:) }
+  else if isLive && bodyMode == .models   { ModelManagerView(conn:) }
+  else if isLive && bodyMode == .settings { SettingsPanelView(conn:) }
+  else { connectedPlaceholder }
+
+// CRITICAL: isLive includes .warning (server idle) — panels must be visible when idle
+// WKWebView only shown when .connected (server running, ui_url present)
 ```
 
-### SlotRowView
+---
+
+## LOG VIEW
+
 ```
-Row 1: slot.name
-Row 2: status dot + statusText + [↺ refresh if active && !transitioning] + [▶/■ toggle]
-↺ behavior: error → restart; else → reconnect
-isTransitioning: .connecting || .disconnecting
+LogView: shows logLines (from file watcher) or processLog fallback
+- Single Text block (joined lines) with .textSelection(.enabled) — allows copy
+- "Load earlier lines" button at top → requestLog(skip: displayLines.count) → prepend=true response
+- Auto-scroll to bottom on new appended lines (unless userScrolled=true)
+- userScrolled: set true on DragGesture up, false on drag down
+- onAppear → requestLog() (initial tail from file)
+- File watcher in Python pushes new lines via log_response total=-1
 ```
 
-### SlotControlsView
-```
-HStack (NOT ScrollView — ScrollView blocks clicks):
-  ForEach(controls): button|dropdown|label
-  if ui_url: Divider + log toggle button
-All buttons use ControlButtonStyle(color:) with:
-  hover: background opacity 0.18, border opacity 0.5
-  press: background opacity 0.35, scale 0.96
-  animation: easeOut 100ms/150ms
+### requestLog parameters
+```swift
+func requestLog(lines: Int? = nil, skip: Int = 0)
+// skip=0   → last N lines (initial/refresh)
+// skip=N   → N lines before the last N (load more / prepend)
 ```
 
-### WebViewPanel
+---
+
+## MODEL MANAGER VIEW
+
 ```
-NSViewRepresentable wrapping WKWebView
-makeNSView: load URLRequest with .reloadIgnoringLocalAndRemoteCacheData
-updateNSView: reload only if url changed (nsView.url?.absoluteString != url.absoluteString)
-Reload trigger: .id(conn.reloadUIToken) on call site — SwiftUI recreates entire view
-reload_ui message → reloadUIToken = UUID() → .id() changes → makeNSView called fresh
+Two tabs: Local Models | Browse HuggingFace
+Local Models tab:
+  - List of GGUFModel with selection highlight (selectedLocalModel state)
+  - Each row: icon + "repo/name / filename" + size + delete button
+  - Padding: 15px horizontal on LazyVStack
+  - No refresh during active download (downloadingFile != nil guard)
+  - download_complete → list refreshes + dropdown items update via control_data
+
+Browse HuggingFace tab:
+  - Left panel: search field + model list with selection highlight (selectedModel state)
+  - Right panel: file list for selected model with selection highlight (selectedFile state)
+  - File row: name + quant badge + size + download button (checkmark if downloaded)
+  - Search: does NOT clear searchResults on new query (avoids blank panel during search)
+  - searchResults only replaced if new response is non-empty
+
+Download flow:
+  - Python streams progress via requests (1MB chunks) → action_result download_progress
+  - progress bar shown during download
+  - download does NOT block Python event loop (asyncio.create_task)
+  - ping/pong continues during download
+  - After complete: local_models + control_data(model_select items) pushed automatically
+```
+
+### action_result routing (via actionResultToken)
+```
+"hf_search_results"  → searchResults, isSearching=false
+"hf_model_files_result" → modelFiles, isLoadingFiles=false
+"download_progress"  → downloadProgress (0.0-1.0)
+"download_complete"  → downloadingFile=nil, loadLocalModels()
+"download_error"     → error message
+"local_models"       → localModels list
+"delete_complete"    → loadLocalModels()
+```
+
+---
+
+## SETTINGS PANEL VIEW
+
+```
+SettingsPanelView: gear icon toggle in SlotControlsView
+Sections: Model & Context | Sampling | Hardware | Speculative Decoding
+Footer: "Changes take effect after restart." + "Save & Restart" button
+
+Save & Restart button:
+  - DISABLED unless isDirty (current values ≠ loaded baseline)
+  - isDirty computed from all 12 fields including draftModelPath
+  - On save: sends save_settings action with settings dict
+  - On settings_saved response: closes panel (toggleMode(.settings) → .webview)
+
+Per-model settings:
+  - Python maintains settings_map: {model_path: {ctx_size, temp, ...}} in settings.json
+  - On model switch: Python pushes get_settings automatically → SettingsPanelView updates
+  - New model: defaults from GGUF metadata (ctx_size from context_length field) + ServerConfig defaults
+  - Known model: restored from settings_map
+  - On save: settings_map[current_model] updated
+
+Speculative Decoding section:
+  - TextField showing filename + folder browse button (NSOpenPanel) + clear button
+  - NSOpenPanel: starts in hf_cache dir, allowsOtherFileTypes=true (no UTType filter — .gguf not in system registry)
+  - After selection: validates .gguf extension, then sends check_draft_compat action
+  - Tokenizer compatibility check: Python reads vocab_size from both models via gguf package (~3-5s for 2 files)
+  - Warning shown if vocab_size mismatch (orange Label with triangle icon)
+  - "Checking tokenizer compatibility…" spinner while check runs
+  - draft_model persisted per-model in draft_map: {model_path: draft_path}
+  - On model switch: draft restored from draft_map automatically
+
+Per-model persistence in settings.json:
+  selected_model: str         — full_path of last selected model
+  draft_model: str | null     — current model's draft (redundant with draft_map, kept for compat)
+  draft_map: {path: path}     — per-model draft associations
+  settings_map: {path: dict}  — per-model server settings
+```
+
+### save_settings action payload
+```json
+{
+  "type": "action",
+  "control_id": "save_settings",
+  "settings": {
+    "ctx_size": 131072, "n_gpu_layers": 99, "threads": 8,
+    "batch_size": 512, "ubatch_size": 256,
+    "temperature": 0.8, "top_p": 0.95, "top_k": 40, "repeat_penalty": 1.1,
+    "flash_attn": true, "mlock": false,
+    "draft_model": "/path/to/draft.gguf"
+  }
+}
 ```
 
 ---
@@ -365,12 +394,7 @@ sendSIGTERM():
   pgid = getpgid(proc.processIdentifier)
   if pgid > 0: killpg(pgid, SIGTERM)  // kills zsh AND python3 AND all children
   else: proc.terminate()
-
-sendSIGKILL():
-  pgid = getpgid(proc.processIdentifier)
-  if pgid > 0: killpg(pgid, SIGKILL)
 ```
-WHY: `start: "zsh start.sh"` → zsh spawns python3; SIGTERM to zsh alone leaves python3 orphaned.
 
 ### Environment
 ```
@@ -389,76 +413,26 @@ load: JSON → AppConfig, fallback to AppConfig.defaults on any error
 save: encode AppConfig → write to url
 ```
 
-### SystemEnvironment protocol
-```swift
-protocol SystemEnvironment {
-    func setDockVisibility(_ visible: Bool)
-    func setLaunchAtLogin(_ enabled: Bool)
-}
-// Production: MacSystemEnvironment (NSApp, SMAppService)
-// Test: mock implementation
-```
-Side effects applied: in SettingsView onChange handlers (not in didSet — avoids NSApp nil crash in tests).
-At startup: PylonRackApp.init() applies showInDock via DispatchQueue.main.asyncAfter(0.1) — delay needed because MenuBarExtra sets .accessory policy after App.init().
-
 ---
 
 ## PBXPROJ CONVENTIONS
 
 ```
 Object ID prefixes:
-  AA0001-AA0031: app PBXBuildFile entries
-  AA1001-AA1031: app PBXFileReference entries
+  AA0001-AA0025: app PBXBuildFile entries (AA0015 removed — AddSlotView deleted)
+  AA1001-AA1025: app PBXFileReference entries
   AA0030-AA0031: resource build file entries (assets, icns)
-  BB0001-BB0008: test-only PBXBuildFile entries (test source files)
+  BB0001-BB0008: test-only PBXBuildFile entries
   BB1001-BB1008: test PBXFileReference entries
-  BS0001-BS0012: shared source PBXBuildFile entries (app sources compiled into test target)
-  AA_TGT, BB_TGT: native targets
-  AA_SRC, BB_SRC: sources build phases
-  AA_FW, BB_FW: frameworks build phases
-  AA_RES: resources build phase
-  APP_GRP, TEST_GRP, FW_GRP, PROD_GRP, ROOT_GRP: groups
+  BS0001-BS0012: shared source PBXBuildFile entries
+  Current max app file: AA1025 = SettingsPanelView.swift
 
 Adding a new Swift file to app:
   1. Add PBXBuildFile: AA00XX = {isa = PBXBuildFile; fileRef = AA10XX; };
-  2. Add PBXFileReference: AA10XX = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = File.swift; sourceTree = "<group>"; };
+  2. Add PBXFileReference: AA10XX = {...; path = File.swift; ...};
   3. Add to APP_GRP children
   4. Add to AA_SRC files
-  5. If needed in tests: add BS00XX = {isa = PBXBuildFile; fileRef = AA10XX; }; add to BB_SRC
-
-Test target does NOT use @testable import — uses BUNDLE_LOADER pattern.
-Shared sources (BS series) compile app types directly into test bundle.
-```
-
----
-
-## TEST SUITE
-
-```
-86 tests, 0 failures (as of last audit)
-
-Files:
-  PylonRackTests.swift      PortFinderTests(4), LocalSlotConfigTests(13), SlotTests(4)
-  SettingsStoreTests.swift  SettingsStoreTests(4), SettingsTests(2)
-  SlotManifestTests.swift   SlotManifestTests(5)
-  IncomingMessageTests.swift IncomingMessageTests(13)
-  SlotConnectionTests.swift  SlotConnectionTests(16) — uses MockWSServer
-  RackControllerTests.swift  RackControllerTests(17)
-  SlotProcessTests.swift     SlotProcessTests(8)
-
-MockWSServer scenarios:
-  .normal, .warning, .errorStatus, .noUI, .dropAfter, .badJSON
-  .withControls — manifest with dropdown + button + label, control_data responds with 3 models
-  .controlsUpdate — sends controls_update on first pong (toggle→Stop/destructive, status→Running/success)
-
-SlotConnectionTests uses ports 19200-19215. RackControllerTests uses temp dirs.
-SlotProcessTests: tests killpg (spawns "sleep 30 & sleep 30"), output capture, PYLON_PORT env.
-
-Run tests:
-  cd PylonRack
-  DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
-  xcodebuild test -scheme PylonRack -destination 'platform=macOS' \
-  -derivedDataPath /tmp/pylonrack-test
+  5. If needed in tests: add BS00XX, add to BB_SRC
 ```
 
 ---
@@ -466,13 +440,11 @@ Run tests:
 ## BUILD & INSTALL
 
 ```bash
-# Build Debug
 cd /Volumes/Marian_Backup/work/pylonrack/PylonRack
 DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
 xcodebuild build -scheme PylonRack -destination 'platform=macOS' \
 -derivedDataPath /tmp/pylonrack-build -configuration Debug
 
-# Install to /Applications
 python3 -c "
 import shutil; from pathlib import Path
 src = Path('/tmp/pylonrack-build/Build/Products/Debug/PylonRack.app')
@@ -480,10 +452,6 @@ dst = Path('/Applications/PylonRack.app')
 if dst.exists(): shutil.rmtree(dst)
 shutil.copytree(src, dst)
 "
-
-# Icon build tools (conda env: pylonrack)
-# cairosvg, psutil, aiohttp, websockets, requests installed
-conda run -n pylonrack python3 build_icons.py
 ```
 
 ---
@@ -491,17 +459,23 @@ conda run -n pylonrack python3 build_icons.py
 ## KNOWN ISSUES & CONSTRAINTS
 
 ```
-[RESOLVED] psutil.net_connections() fails without root on macOS → replaced with lsof
-[RESOLVED] orphan processes when slot uses start.sh → killpg on process group
-[RESOLVED] WebView shows stale model name → reload_ui message + .id(reloadUIToken)
-[RESOLVED] NSApp nil crash in tests from AppSettings.didSet → moved side effects to SettingsView
-[RESOLVED] @testable import fails with BUNDLE_LOADER → shared sources (BS series) pattern
+[RESOLVED] psutil.net_connections() fails without root on macOS → lsof
+[RESOLVED] orphan processes → killpg
+[RESOLVED] WebView stale model → reload_ui + .id(reloadUIToken)
+[RESOLVED] NSApp nil crash in tests → side effects in SettingsView
+[RESOLVED] @testable import fails → shared sources BS series
+[RESOLVED] WebSocket disconnect during cmake build → URLSession timeout=.infinity
+[RESOLVED] receiveLoop reconnect during update → guard updateInProgress
+[RESOLVED] AddSlotView dead code → deleted
+[RESOLVED] Download blocks Python event loop → asyncio.create_task
+[RESOLVED] Log unavailable when server stopped → file watcher reads from disk
+[RESOLVED] Log text not selectable → single Text block + .textSelection(.enabled)
 [ACTIVE] Rack log (RackLogView) does not persist across sessions — in-memory only
-[ACTIVE] No test for deactivate→process actually dead (RackControllerTests verifies isActive flag but not OS-level process termination)
-[ACTIVE] startup_delay in rack.json: if venv creation takes >delay, connection fails; start.sh echos to stdout which becomes process log
-[ACTIVE] Warning status on heartbeat miss persists until next successful pong — no visual timeout indicator
-[CONSTRAINT] pbxproj must be manually maintained — Xcode will regenerate and fix on open, but agent must keep in sync
-[CONSTRAINT] Test ports 19200-19215 hardcoded — port conflicts possible if tests run concurrently with other services
+[ACTIVE] No test for deactivate→process actually dead
+[ACTIVE] startup_delay: if venv creation > delay, connection fails
+[ACTIVE] Warning status on heartbeat miss persists until next successful pong
+[CONSTRAINT] pbxproj must be manually maintained
+[CONSTRAINT] Test ports 19200-19215 hardcoded
 ```
 
 ---
@@ -510,24 +484,22 @@ conda run -n pylonrack python3 build_icons.py
 
 ```
 rack.json required fields: name(str), start(str), port(int 1-65535)
-rack.json optional: stop(str), version(str), heartbeat_interval(int), startup_delay(int), controls([])
+rack.json optional: stop(str), version(str), heartbeat_interval(int), startup_delay(int)
 start command: run via /bin/zsh -c; reads PYLON_PORT env var
-controls[].type: "button"|"dropdown"|"label"
-controls[].style: "primary"|"secondary"|"destructive"|"warning"|"success"|"error"|"default"
 
 Slot app MUST:
-  - bind WebSocket server on PYLON_PORT (or fallback port)
-  - respond to manifest with full manifest message on EVERY connect (not just first)
+  - bind WebSocket server on PYLON_PORT
+  - respond to manifest with full manifest on EVERY connect
   - respond to ping with pong within heartbeat_interval seconds
-  - respond to control_data for each dropdown (items array)
+  - respond to control_data for each dropdown
   - respond to action with action_result
-  - respond to log_request with log_response
-  - handle shutdown by calling sys.exit(0) — rack will SIGTERM after 3s if not exited
-  - send controls_update when internal state changes (not just on request)
-  - keep WebSocket server running when rack disconnects (rack may reconnect)
+  - respond to log_request with log_response (supports skip param for load more)
+  - handle shutdown by sys.exit(0)
+  - send controls_update when internal state changes
+  - keep WebSocket server running when rack disconnects
 
-reload_ui: send when UI should be refreshed (e.g. after backend model/process change)
-  → rack recreates WKWebView with .reloadIgnoringLocalAndRemoteCacheData
+action payload may include settings dict (for save_settings handler)
+log_request includes skip:Int for "load earlier lines" feature
 
 Reference implementation: /Volumes/Marian_Backup/work/pylonrack-slots/llama/
 ```
@@ -538,44 +510,52 @@ Reference implementation: /Volumes/Marian_Backup/work/pylonrack-slots/llama/
 
 ```
 2026-05-27 — Initial AGENTS.md
-  Added: full protocol spec, architecture, data models, pbxproj conventions,
-  known issues (psutil, orphan processes, WebView reload), slot app contract.
-  Test count at audit: 86/86 passing.
-  Active slot apps: pylonrack-slots/llama, pylonrack-slots/benchmark
 
-2026-05-28 — Major audit after long implementation session
-  Changes:
-  - BodyMode enum: .webview | .log | .models (replaced showLog: Bool)
-  - ModelManagerView: HF browse/download/delete, actionResultToken pattern
-  - WebViewPanel: NSViewContainer subclass, load triggered from viewDidMoveToWindow+layout
-    CRITICAL: WKWebView created in handleManifest WITHOUT load — load triggered only after
-    non-zero frame from SwiftUI layout. Prevents blank WebView on startup.
-  - WKWebView persistent: created once in SlotConnection.handleManifest, reset only on deactivate()
-    NOT reset on reconnect — preserves session across heartbeat reconnects
-  - ZStack body: WebViewPanel always in hierarchy during log/models toggle — prevents SPA reset
-  - show_log protocol message: rack auto-switches to bodyMode=.log + requestLog()
-  - Heartbeat suspend during update: tick() checks updateInProgress (status_label == Updating...)
-    Prevents reconnect during cmake builds (minutes long)
-    missedBeats reset when update finishes via applyControlsUpdate()
-  - AppDelegate.applicationWillTerminate: pkill -TERM -f server.py → prevents orphan processes on quit
-  - AddSlotView removed: + button opens NSOpenPanel directly
-  - Remote slot type removed from UI
-  - Tooltip delay: 0.5s via UserDefaults NSInitialToolTipDelay + NSToolTipDelay
-  - SlotControlsView: update button filtered to right side, separated by Divider
-  - ModeToggleButton: log + models toggles with .help() tooltips
+2026-05-28 — Major audit after debugging session
+  Added: cmake PATH fix, correct build commands, binary_stale 3-state,
+  show_log protocol, log streaming (total=-1), background check sequence,
+  model manager handlers, anti-flicker controls_update, stop() wait semantics.
+
+2026-05-29 — Major feature session audit
+  FIXED:
+  - WebSocket disconnect during cmake build: URLSession timeout=.infinity +
+    receiveLoop guard updateInProgress + onRackLog diagnostics
+  - Download progress: streaming via requests 1MB chunks, asyncio.create_task
+  - Browse HuggingFace blank panel: searchResults not cleared on new query
+  - Model/file list selection: highlight on click (selectedLocalModel, selectedFile)
+  - Log from disk: file watcher (_watch_log_file) replaces on_log_line callback;
+    log available even when server stopped; initial tail from file on log_request
+  - Log text selection: single Text block + .textSelection(.enabled)
+  - Log "load earlier lines": skip param in log_request, prepend=true response
+  - Body panels visible when status==.warning (server idle, no ui_url)
+  - save_settings closes panel on success (toggleMode → .webview)
+  - selected_model persisted in settings.json (restored on slot restart)
+  - draft_model persisted per-model in draft_map
+  - Per-model settings via settings_map; ctx_size from GGUF metadata
+  - Settings panel pushed automatically on model switch
+  - Save & Restart disabled unless isDirty
+  - Draft model: NSOpenPanel file picker (allowsOtherFileTypes=true),
+    tokenizer compatibility check via gguf package (vocab_size comparison),
+    warning displayed after dialog closes
+  - llama-server start failure → auto show_log
+  - Speculative decoding: -md flag for draft model
+
+  ADDED FILES: SettingsPanelView.swift (AA1025)
+  REMOVED FILES: AddSlotView.swift (AA1015/AA0015 — dead code)
+
+  NEW PROTOCOL MESSAGES:
+  - log_request: added skip:Int param
+  - log_response: added prepend:Bool field
+  - action: added settings:Dict field (save_settings)
+  - get_settings / save_settings / check_draft_compat (action control_ids)
+
+  NEW PYTHON DEPS: gguf>=0.9 (in requirements.txt)
   
-  Protocol additions:
-  - show_log (app→rack): rack sets bodyMode=.log
-  - reload_ui now also calls wv.load() directly on persistent WKWebView instance
-  - log_response total=-1: streaming append to logLines (not replace)
-  - actionResultToken: UUID changes on each action_result → ModelManagerView observes
-  
-  ACTIVE BUG (in progress at audit):
-  - During cmake build, log disappears from view at ~11% 
-    Test confirmed: WebSocket protocol works correctly (268 lines received)
-    Problem is in Swift: receive loop error causes reconnect despite heartbeat suspend
-    NSLog added to onDropped() and receiveLoop error handler for diagnosis
-    Status: NSLog logging added, waiting for user to report Console.app output
-  
-  Test count: 86/86 passing (Swift), 42/43 (Python — 1 expected fail: binary stale)
+  SLOT settings.json additions:
+  - selected_model: str
+  - draft_model: str|null
+  - draft_map: {model_path: draft_path}
+  - settings_map: {model_path: {server_settings}}
+  - server.temperature, server.top_p, server.top_k, server.repeat_penalty
+  - server.flash_attn, server.mlock
 ```
