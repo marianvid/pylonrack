@@ -3,6 +3,8 @@ import SwiftUI
 struct LogView: View {
     @ObservedObject var conn: SlotConnection
 
+    @State private var isLoadingMore = false
+
     var body: some View {
         VStack(spacing: 0) {
             // Header
@@ -38,6 +40,27 @@ struct LogView: View {
                 let lines = displayLines
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 0) {
+                        // Load more button at top
+                        if !lines.isEmpty {
+                            HStack {
+                                Spacer()
+                                if isLoadingMore {
+                                    ProgressView().controlSize(.mini)
+                                        .padding(.vertical, 6)
+                                } else {
+                                    Button("Load earlier lines") {
+                                        loadMore()
+                                    }
+                                    .font(.system(size: 11))
+                                    .buttonStyle(.plain)
+                                    .foregroundStyle(.secondary)
+                                    .padding(.vertical, 6)
+                                }
+                                Spacer()
+                            }
+                            .id("top")
+                        }
+
                         if lines.isEmpty {
                             Text(emptyMessage)
                                 .font(.system(size: 11, design: .monospaced))
@@ -57,8 +80,14 @@ struct LogView: View {
                     }
                 }
                 .background(Color(nsColor: .textBackgroundColor))
-                .onChange(of: conn.logLines) { _, _ in
-                    proxy.scrollTo(displayLines.indices.last, anchor: .bottom)
+                .onChange(of: conn.logLines) { old, new in
+                    // Only auto-scroll to bottom on append (not on prepend/load more)
+                    if new.count > old.count && !isLoadingMore {
+                        proxy.scrollTo(displayLines.indices.last, anchor: .bottom)
+                    }
+                    if isLoadingMore {
+                        isLoadingMore = false
+                    }
                 }
                 .onChange(of: conn.processLog) { _, _ in
                     proxy.scrollTo(displayLines.indices.last, anchor: .bottom)
@@ -67,10 +96,10 @@ struct LogView: View {
         }
         .onAppear {
             conn.requestLog()
-        }    }
+        }
+    }
 
     private var displayLines: [String] {
-        // Show WS log if connected and available, else show process stdout
         if !conn.logLines.isEmpty { return conn.logLines }
         return conn.processLog
     }
@@ -81,6 +110,12 @@ struct LogView: View {
         case .missing:                    return "Slot inactive — no log available"
         default:                          return "No log entries yet"
         }
+    }
+
+    private func loadMore() {
+        guard !isLoadingMore else { return }
+        isLoadingMore = true
+        conn.requestLog(skip: displayLines.count)
     }
 
     private func lineColor(_ line: String) -> Color {

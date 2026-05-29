@@ -31,7 +31,7 @@ private final class WSDelegate: NSObject, URLSessionWebSocketDelegate {
 enum IncomingMessage {
     case pong(status: String, message: String)
     case manifest(SlotManifest)
-    case logResponse(lines: [String], total: Int)
+    case logResponse(lines: [String], total: Int, prepend: Bool)
     case controlData(controlId: String, items: [String])
     case controlsUpdate(updates: [[String: Any]])
     case reloadUI
@@ -57,8 +57,9 @@ enum IncomingMessage {
             return .manifest(m)
         case "log_response":
             return .logResponse(
-                lines: json["lines"] as? [String] ?? [],
-                total: json["total"] as? Int ?? 0
+                lines:   json["lines"]   as? [String] ?? [],
+                total:   json["total"]   as? Int  ?? 0,
+                prepend: json["prepend"] as? Bool ?? false
             )
         case "control_data":
             guard let id    = json["control_id"] as? String,
@@ -174,10 +175,10 @@ final class SlotConnection: ObservableObject {
         send(["type": "shutdown"])
     }
 
-    func requestLog(lines: Int? = nil, offset: Int = 0) {
-        send(["type": "log_request",
-              "lines":  lines ?? settings.logLinesPerRequest,
-              "offset": offset])
+    func requestLog(lines: Int? = nil, skip: Int = 0) {
+        send(["type":  "log_request",
+              "lines": lines ?? settings.logLinesPerRequest,
+              "skip":  skip])
     }
 
     func toggleMode(_ mode: BodyMode) {
@@ -286,14 +287,17 @@ final class SlotConnection: ObservableObject {
             handlePong(status: statusStr, message: msg)
         case .manifest(let m):
             handleManifest(m)
-        case .logResponse(let lines, let total):
-            if total == -1 {
-                // Streaming append — live push from slot app
+        case .logResponse(let lines, let total, let prepend):
+            if prepend {
+                // Load more — prepend older lines at top
+                logLines = lines + logLines
+            } else if total == -1 {
+                // Streaming append — live push from file watcher
                 logLines.append(contentsOf: lines)
                 let cap = settings.logLinesPerRequest * 20
                 if logLines.count > cap { logLines.removeFirst(logLines.count - cap) }
             } else {
-                // Full fetch response
+                // Initial fetch
                 logLines = lines
                 logTotal = total
             }
