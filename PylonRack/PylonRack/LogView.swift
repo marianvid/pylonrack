@@ -41,7 +41,6 @@ struct LogView: View {
                 let lines = displayLines
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 0) {
-                        // Selection propagates to all Text children
 
                         // Load more button at top
                         if !lines.isEmpty {
@@ -82,7 +81,6 @@ struct LogView: View {
                         }
                     }
                 }
-                .textSelection(.enabled)
                 .background(Color(nsColor: .textBackgroundColor))
                 .onChange(of: conn.logLines) { old, new in
                     if isLoadingMore {
