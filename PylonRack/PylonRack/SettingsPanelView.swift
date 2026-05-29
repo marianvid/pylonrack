@@ -144,6 +144,7 @@ struct SettingsPanelView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .onAppear { loadFromConn() }
         .onChange(of: conn.actionResultToken) { handleActionResult() }
+        .onChange(of: conn.controls) { _, _ in loadFromConn() }
     }
 
     // MARK: - Sub-views
