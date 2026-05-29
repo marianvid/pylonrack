@@ -23,8 +23,10 @@ struct SettingsPanelView: View {
     @State private var mlock:     Bool = false
 
     // Draft model
-    @State private var draftModelPath: String = ""   // "" = disabled
-    @State private var hfCachePath:    String = ""
+    @State private var draftModelPath:    String = ""   // "" = disabled
+    @State private var hfCachePath:       String = ""
+    @State private var draftModelWarning: String = ""   // "" = no warning
+    @State private var draftModelChecking: Bool  = false""
 
     // UI state
     @State private var isSaving:    Bool   = false
@@ -101,12 +103,25 @@ struct SettingsPanelView: View {
                             if !draftModelPath.isEmpty {
                                 Button {
                                     draftModelPath = ""
+                                    draftModelWarning = ""
                                 } label: {
                                     Image(systemName: "xmark.circle.fill")
                                         .foregroundStyle(.secondary)
                                 }
                                 .buttonStyle(.plain)
                             }
+                        }
+                        if draftModelChecking {
+                            HStack(spacing: 6) {
+                                ProgressView().controlSize(.mini)
+                                Text("Checking tokenizer compatibility…")
+                                    .font(.system(size: 12))
+                                    .foregroundStyle(.secondary)
+                            }
+                        } else if !draftModelWarning.isEmpty {
+                            Label(draftModelWarning, systemImage: "exclamationmark.triangle.fill")
+                                .font(.system(size: 12))
+                                .foregroundStyle(.orange)
                         }
                     }
                 }
@@ -228,6 +243,16 @@ struct SettingsPanelView: View {
             }
             draftModelPath = data["draft_model"] as? String ?? ""
             hfCachePath    = data["hf_cache"]    as? String ?? ""
+        case "draft_compat":
+            draftModelChecking = false
+            let compatible = data["compatible"] as? Bool ?? false
+            let mainVocab  = data["main_vocab"]  as? Int ?? 0
+            let draftVocab = data["draft_vocab"] as? Int ?? 0
+            if !compatible {
+                draftModelWarning = "Tokenizer mismatch: main model vocab \(mainVocab) ≠ draft vocab \(draftVocab). Speculative decoding will fail."
+            } else {
+                draftModelWarning = ""
+            }
         case "settings_saved":
             isSaving = false
             // Close settings panel — return to webview
@@ -247,9 +272,20 @@ struct SettingsPanelView: View {
         if !hfCachePath.isEmpty {
             panel.directoryURL = URL(fileURLWithPath: hfCachePath)
         }
-        if panel.runModal() == .OK, let url = panel.url {
-            draftModelPath = url.path
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+
+        // Validate extension
+        guard url.pathExtension.lowercased() == "gguf" else {
+            draftModelWarning = "Selected file is not a .gguf model."
+            return
         }
+
+        draftModelPath    = url.path
+        draftModelWarning = ""
+
+        // Check tokenizer compatibility in background
+        conn.sendAction("check_draft_compat", value: url.path)
+        draftModelChecking = true
     }
 
     private func saveSettings() {
