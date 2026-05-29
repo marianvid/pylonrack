@@ -239,10 +239,11 @@ struct SettingsPanelView: View {
 
     private func browseDraftModel() {
         let panel = NSOpenPanel()
-        panel.title          = "Select Draft Model"
-        panel.allowedContentTypes = [.init(filenameExtension: "gguf")!]
+        panel.title                   = "Select Draft Model (.gguf)"
         panel.allowsMultipleSelection = false
         panel.canChooseDirectories    = false
+        panel.allowsOtherFileTypes    = true
+        panel.allowedContentTypes     = []
         if !hfCachePath.isEmpty {
             panel.directoryURL = URL(fileURLWithPath: hfCachePath)
         }
