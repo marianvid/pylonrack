@@ -69,15 +69,14 @@ struct LogView: View {
                                 .foregroundStyle(.tertiary)
                                 .padding(12)
                         } else {
-                            ForEach(Array(lines.enumerated()), id: \.offset) { idx, line in
-                                Text(line)
-                                    .font(.system(size: 11, design: .monospaced))
-                                    .foregroundStyle(lineColor(line))
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 1)
-                                    .id(idx)
-                            }
+                            Text(lines.joined(separator: "\n"))
+                                .font(.system(size: 11, design: .monospaced))
+                                .foregroundStyle(Color(nsColor: .labelColor))
+                                .textSelection(.enabled)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 4)
+                                .id("logtext")
                         }
                     }
                 }
@@ -89,12 +88,12 @@ struct LogView: View {
                     }
                     // Only auto-scroll on new appended lines, not if user scrolled up
                     if new.count > old.count && !userScrolled {
-                        proxy.scrollTo(displayLines.indices.last, anchor: .bottom)
+                        proxy.scrollTo("logtext", anchor: .bottom)
                     }
                 }
                 .onChange(of: conn.processLog) { _, _ in
                     if !userScrolled {
-                        proxy.scrollTo(displayLines.indices.last, anchor: .bottom)
+                        proxy.scrollTo("logtext", anchor: .bottom)
                     }
                 }
                 .simultaneousGesture(DragGesture().onChanged { v in
