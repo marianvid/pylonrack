@@ -23,14 +23,42 @@ struct SettingsPanelView: View {
     @State private var mlock:     Bool = false
 
     // Draft model
-    @State private var draftModelPath:    String = ""   // "" = disabled
-    @State private var hfCachePath:       String = ""
-    @State private var draftModelWarning: String = ""   // "" = no warning
-    @State private var draftModelChecking: Bool  = false
+    @State private var draftModelPath:     String = ""
+    @State private var hfCachePath:        String = ""
+    @State private var draftModelWarning:  String = ""
+    @State private var draftModelChecking: Bool   = false
+
+    // Loaded (baseline) values — used to detect dirty state
+    @State private var loadedCtxSize:      String = ""
+    @State private var loadedNGpuLayers:   String = ""
+    @State private var loadedThreads:      String = ""
+    @State private var loadedBatchSize:    String = ""
+    @State private var loadedUBatchSize:   String = ""
+    @State private var loadedTemperature:  String = ""
+    @State private var loadedTopP:         String = ""
+    @State private var loadedTopK:         String = ""
+    @State private var loadedRepeatPenalty:String = ""
+    @State private var loadedFlashAttn:    Bool   = true
+    @State private var loadedMlock:        Bool   = false
+    @State private var loadedDraftModel:   String = ""
 
     // UI state
-    @State private var isSaving:    Bool   = false
-    @State private var savedBanner: Bool   = false
+    @State private var isSaving: Bool = false
+
+    private var isDirty: Bool {
+        ctxSize       != loadedCtxSize       ||
+        nGpuLayers    != loadedNGpuLayers    ||
+        threads       != loadedThreads       ||
+        batchSize     != loadedBatchSize     ||
+        uBatchSize    != loadedUBatchSize    ||
+        temperature   != loadedTemperature   ||
+        topP          != loadedTopP          ||
+        topK          != loadedTopK          ||
+        repeatPenalty != loadedRepeatPenalty ||
+        flashAttn     != loadedFlashAttn     ||
+        mlock         != loadedMlock         ||
+        draftModelPath != loadedDraftModel
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -155,7 +183,6 @@ struct SettingsPanelView: View {
             Text("Server Settings")
                 .font(.headline)
             Spacer()
-
         }
         .padding(.horizontal, 24)
         .padding(.top, 20)
@@ -177,7 +204,7 @@ struct SettingsPanelView: View {
         }
         .buttonStyle(.borderedProminent)
         .controlSize(.regular)
-        .disabled(isSaving)
+        .disabled(isSaving || !isDirty)
     }
 
     @ViewBuilder
@@ -220,8 +247,36 @@ struct SettingsPanelView: View {
     // MARK: - Load / Save
 
     private func loadFromConn() {
-        // Read current values from settings via action_result
         conn.sendAction("get_settings")
+    }
+
+    private func applyLoaded(s: [String: Any], draft: String) {
+        ctxSize       = "\(s["ctx_size"]       ?? 131072)"
+        nGpuLayers    = "\(s["n_gpu_layers"]   ?? 99)"
+        threads       = "\(s["threads"]        ?? 8)"
+        batchSize     = "\(s["batch_size"]     ?? 512)"
+        uBatchSize    = "\(s["ubatch_size"]    ?? 256)"
+        temperature   = "\(s["temperature"]   ?? 0.8)"
+        topP          = "\(s["top_p"]         ?? 0.95)"
+        topK          = "\(s["top_k"]         ?? 40)"
+        repeatPenalty = "\(s["repeat_penalty"] ?? 1.1)"
+        flashAttn     = s["flash_attn"] as? Bool ?? true
+        mlock         = s["mlock"]      as? Bool ?? false
+        draftModelPath = draft
+
+        // Snapshot as baseline
+        loadedCtxSize       = ctxSize
+        loadedNGpuLayers    = nGpuLayers
+        loadedThreads       = threads
+        loadedBatchSize     = batchSize
+        loadedUBatchSize    = uBatchSize
+        loadedTemperature   = temperature
+        loadedTopP          = topP
+        loadedTopK          = topK
+        loadedRepeatPenalty = repeatPenalty
+        loadedFlashAttn     = flashAttn
+        loadedMlock         = mlock
+        loadedDraftModel    = draft
     }
 
     private func handleActionResult() {
@@ -229,20 +284,10 @@ struct SettingsPanelView: View {
         switch data["type"] as? String {
         case "settings":
             if let s = data["server"] as? [String: Any] {
-                ctxSize      = "\(s["ctx_size"]      ?? 131072)"
-                nGpuLayers   = "\(s["n_gpu_layers"]  ?? 99)"
-                threads      = "\(s["threads"]       ?? 8)"
-                batchSize    = "\(s["batch_size"]    ?? 512)"
-                uBatchSize   = "\(s["ubatch_size"]   ?? 256)"
-                temperature  = "\(s["temperature"]   ?? 0.8)"
-                topP         = "\(s["top_p"]         ?? 0.95)"
-                topK         = "\(s["top_k"]         ?? 40)"
-                repeatPenalty = "\(s["repeat_penalty"] ?? 1.1)"
-                flashAttn    = s["flash_attn"]  as? Bool ?? true
-                mlock        = s["mlock"]       as? Bool ?? false
+                let draft = data["draft_model"] as? String ?? ""
+                hfCachePath = data["hf_cache"] as? String ?? ""
+                applyLoaded(s: s, draft: draft)
             }
-            draftModelPath = data["draft_model"] as? String ?? ""
-            hfCachePath    = data["hf_cache"]    as? String ?? ""
         case "draft_compat":
             draftModelChecking = false
             let compatible = data["compatible"] as? Bool ?? false
@@ -255,7 +300,6 @@ struct SettingsPanelView: View {
             }
         case "settings_saved":
             isSaving = false
-            // Close settings panel — return to webview
             conn.toggleMode(.settings)
         default:
             break
@@ -274,7 +318,6 @@ struct SettingsPanelView: View {
         }
         guard panel.runModal() == .OK, let url = panel.url else { return }
 
-        // Validate extension
         guard url.pathExtension.lowercased() == "gguf" else {
             draftModelWarning = "Selected file is not a .gguf model."
             return
@@ -282,8 +325,6 @@ struct SettingsPanelView: View {
 
         draftModelPath    = url.path
         draftModelWarning = ""
-
-        // Check tokenizer compatibility in background
         conn.sendAction("check_draft_compat", value: url.path)
         draftModelChecking = true
     }
@@ -291,11 +332,11 @@ struct SettingsPanelView: View {
     private func saveSettings() {
         isSaving = true
         let settings: [String: Any] = [
-            "ctx_size":       Int(ctxSize)      ?? 131072,
-            "n_gpu_layers":   Int(nGpuLayers)   ?? 99,
-            "threads":        Int(threads)      ?? 8,
-            "batch_size":     Int(batchSize)    ?? 512,
-            "ubatch_size":    Int(uBatchSize)   ?? 256,
+            "ctx_size":       Int(ctxSize)          ?? 131072,
+            "n_gpu_layers":   Int(nGpuLayers)       ?? 99,
+            "threads":        Int(threads)          ?? 8,
+            "batch_size":     Int(batchSize)        ?? 512,
+            "ubatch_size":    Int(uBatchSize)       ?? 256,
             "temperature":    Double(temperature)   ?? 0.8,
             "top_p":          Double(topP)          ?? 0.95,
             "top_k":          Int(topK)             ?? 40,
