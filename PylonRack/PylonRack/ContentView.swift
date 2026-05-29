@@ -180,6 +180,7 @@ struct SlotDetailView: View {
             }
 
         default:
+            let isLive = conn.status == .connected || conn.status == .warning
             if let wv = conn.webView, conn.status == .connected,
                let uiURL = conn.manifest?.uiURL, let url = URL(string: uiURL) {
                 ZStack {
@@ -197,9 +198,11 @@ struct SlotDetailView: View {
                             .background(Color(nsColor: .textBackgroundColor))
                     }
                 }
-            } else if conn.bodyMode == .models {
+            } else if isLive && conn.bodyMode == .log {
+                LogView(conn: conn)
+            } else if isLive && conn.bodyMode == .models {
                 ModelManagerView(conn: conn)
-            } else if conn.bodyMode == .settings {
+            } else if isLive && conn.bodyMode == .settings {
                 SettingsPanelView(conn: conn)
             } else {
                 connectedPlaceholder

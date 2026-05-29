@@ -3,7 +3,8 @@ import SwiftUI
 struct LogView: View {
     @ObservedObject var conn: SlotConnection
 
-    @State private var isLoadingMore = false
+    @State private var isLoadingMore  = false
+    @State private var userScrolled   = false  // true after user manually scrolls up
 
     var body: some View {
         VStack(spacing: 0) {
@@ -81,17 +82,26 @@ struct LogView: View {
                 }
                 .background(Color(nsColor: .textBackgroundColor))
                 .onChange(of: conn.logLines) { old, new in
-                    // Only auto-scroll to bottom on append (not on prepend/load more)
-                    if new.count > old.count && !isLoadingMore {
-                        proxy.scrollTo(displayLines.indices.last, anchor: .bottom)
-                    }
                     if isLoadingMore {
                         isLoadingMore = false
+                        return
+                    }
+                    // Only auto-scroll on new appended lines, not if user scrolled up
+                    if new.count > old.count && !userScrolled {
+                        proxy.scrollTo(displayLines.indices.last, anchor: .bottom)
                     }
                 }
                 .onChange(of: conn.processLog) { _, _ in
-                    proxy.scrollTo(displayLines.indices.last, anchor: .bottom)
+                    if !userScrolled {
+                        proxy.scrollTo(displayLines.indices.last, anchor: .bottom)
+                    }
                 }
+                .simultaneousGesture(DragGesture().onChanged { v in
+                    // If user drags up, stop auto-scroll
+                    if v.translation.height > 10 { userScrolled = true }
+                    // If user drags to bottom, resume auto-scroll
+                    if v.translation.height < -10 { userScrolled = false }
+                })
             }
         }
         .onAppear {
