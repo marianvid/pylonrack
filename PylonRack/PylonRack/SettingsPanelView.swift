@@ -26,7 +26,7 @@ struct SettingsPanelView: View {
     @State private var draftModelPath:    String = ""   // "" = disabled
     @State private var hfCachePath:       String = ""
     @State private var draftModelWarning: String = ""   // "" = no warning
-    @State private var draftModelChecking: Bool  = false""
+    @State private var draftModelChecking: Bool  = false
 
     // UI state
     @State private var isSaving:    Bool   = false
